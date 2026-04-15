@@ -19,6 +19,11 @@ const routes = [
     component: () => import('../pages/users.vue'),
   },
   {
+    path: '/tasks',
+    name: 'tasks',
+    component: () => import('../pages/tasks.vue'),
+  },
+  {
     path: '/components',
     name: 'components',
     component: () => import('../pages/components.vue'),

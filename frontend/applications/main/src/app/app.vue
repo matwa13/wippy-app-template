@@ -26,6 +26,7 @@ instance.on('action:navigate', (data: any) => {
 
 const navItems = [
   { path: '/', name: 'home', label: 'Home', icon: 'tabler:home' },
+  { path: '/tasks', name: 'tasks', label: 'Tasks', icon: 'tabler:checkbox' },
   { path: '/users', name: 'users', label: 'Users', icon: 'tabler:users' },
   { path: '/components', name: 'components', label: 'Components', icon: 'tabler:components' },
 ]

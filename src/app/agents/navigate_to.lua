@@ -5,6 +5,7 @@ local USER_HUB_PREFIX = "user."
 local PAGES: {[string]: string} = {
     home = "/",
     users = "/users",
+    tasks = "/tasks",
 }
 
 local function handler(params)
