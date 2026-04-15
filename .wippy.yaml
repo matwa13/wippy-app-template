@@ -1,0 +1,9 @@
+version: "1.0"
+
+lua:
+  type_system:
+    enabled: true
+
+lsp:
+  enabled: true
+  address: ":7777"

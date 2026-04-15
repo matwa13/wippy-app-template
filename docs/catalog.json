@@ -1,0 +1,53 @@
+{
+  "version": 1,
+  "docs": [
+    {
+      "path": "docs/reference/wippy-docs-llms.txt",
+      "title": "Wippy LLM Docs Index",
+      "category": "reference",
+      "summary": "API endpoints and documentation index for Wippy platform"
+    },
+    {
+      "path": "frontend/docs/README.md",
+      "title": "Wippy Frontend Development Guide",
+      "category": "reference",
+      "summary": "Architecture overview: host-based model, web apps vs web components, proxy API access patterns"
+    },
+    {
+      "path": "frontend/docs/component-guide.md",
+      "title": "Web Component Guide",
+      "category": "reference",
+      "summary": "Building web components with WippyVueElement, Shadow DOM, props, events, PrimeVue, Tailwind"e
+    },
+    {
+      "path": "frontend/docs/app-guide.md",
+      "title": "Web App Guide",
+      "category": "reference",
+      "summary": "Building web apps: routing, Vite config, window.$W proxy, Vue Router, layouts"
+    },
+    {
+      "path": "frontend/docs/app-checklist.md",
+      "title": "Web App Checklist",
+      "category": "reference",
+      "summary": "Pre-submission checklist for web apps"
+    },
+    {
+      "path": "frontend/docs/proxy-api.md",
+      "title": "Proxy API Reference",
+      "category": "reference",
+      "summary": "Full proxy API: api, host, on, state, ws, hostCss, loadCss, loadWebComponent methods"
+    },
+    {
+      "path": "frontend/docs/host-spec.md",
+      "title": "Host Contract Specification",
+      "category": "reference",
+      "summary": "Host runtime contract: package.json format, import maps, proxy config, lifecycle"
+    },
+    {
+      "path": "frontend/docs/best-practices.md",
+      "title": "Frontend Best Practices",
+      "category": "reference",
+      "summary": "Vue 3, Tailwind CSS, PrimeVue, accessibility, and code quality conventions"
+    }
+  ]
+}
