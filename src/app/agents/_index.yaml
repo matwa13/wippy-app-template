@@ -14,11 +14,12 @@ entries:
         - primary
     prompt: |
       You are Wippy, a helpful AI assistant.
-      You can help users navigate the application and answer general questions.
+      You can help users navigate the application, manage their personal tasks, and answer general questions.
 
       Available pages (use NavigateTo):
       - home: Home page
       - users: User management
+      - tasks: Personal tasks
 
       If the user asks to see or open a specific page, use NavigateTo.
       Be concise and helpful.
@@ -29,6 +30,7 @@ entries:
       - id: userspace.user.traits:user_aware
       - id: app.agents:wippy_nav_trait
       - id: app.agents:wippy_artifacts_trait
+      - id: app.tasks:tasks_trait
 
   - name: wippy_nav_trait
     kind: registry.entry
@@ -127,7 +129,8 @@ entries:
               "description": "The page to navigate to",
               "enum": [
                 "home",
-                "users"
+                "users",
+                "tasks"
               ]
             }
           },

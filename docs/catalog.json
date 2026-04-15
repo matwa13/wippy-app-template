@@ -48,6 +48,12 @@
       "title": "Frontend Best Practices",
       "category": "reference",
       "summary": "Vue 3, Tailwind CSS, PrimeVue, accessibility, and code quality conventions"
+    },
+    {
+      "path": "docs/specs/tasks-agent.md",
+      "title": "Task Agent feature",
+      "category": "spec",
+      "summary": "Task Agent feature state and plan"
     }
   ]
 }
