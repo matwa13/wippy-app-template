@@ -35,7 +35,11 @@ local function handler()
         return
     end
 
-    local task, c_err = task_repo.create(actor:id(), data.title)
+    local task, c_err = task_repo.create(actor:id(), data.title, {
+        notes    = data.notes,
+        due_date = data.due_date,
+        priority = data.priority,
+    })
     if c_err then
         res:set_status(http.STATUS.INTERNAL_ERROR)
         res:write_json({ success = false, error = c_err })

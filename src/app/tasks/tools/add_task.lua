@@ -2,6 +2,8 @@ local ctx = require("ctx")
 local task_repo = require("task_repo")
 local tools_common = require("tools_common")
 
+local PRIORITY_MAP = { low = 1, medium = 2, high = 3 }
+
 local function handler(params)
     local user_id = ctx.get("user_id")
     if not user_id then
@@ -13,7 +15,11 @@ local function handler(params)
         return { success = false, error = "title is required" }
     end
 
-    local task, err = task_repo.create(user_id, title)
+    local task, err = task_repo.create(user_id, title, {
+        notes    = params.notes,
+        due_date = params.due_date,
+        priority = params.priority and PRIORITY_MAP[params.priority],
+    })
     if err then
         return { success = false, error = err }
     end

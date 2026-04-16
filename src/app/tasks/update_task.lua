@@ -39,6 +39,9 @@ local function handler()
     local fields = {}
     if data.title ~= nil then fields.title = data.title end
     if data.done ~= nil then fields.done = data.done and true or false end
+    if data.notes ~= nil then fields.notes = data.notes end
+    if data.due_date ~= nil then fields.due_date = data.due_date end
+    if data.priority ~= nil then fields.priority = data.priority end
 
     if not next(fields) then
         res:set_status(http.STATUS.BAD_REQUEST)

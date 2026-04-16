@@ -6,6 +6,9 @@ import Button from 'primevue/button'
 import InputText from 'primevue/inputtext'
 import Checkbox from 'primevue/checkbox'
 import SelectButton from 'primevue/selectbutton'
+import Select from 'primevue/select'
+import DatePicker from 'primevue/datepicker'
+import Textarea from 'primevue/textarea'
 import { useApi, useHost, useWippy } from '../composables/useWippy'
 import { useTasksStore } from '../stores/tasks'
 import type { Task } from '../stores/tasks'
@@ -15,6 +18,27 @@ const host = useHost()
 const wippy = useWippy()
 const queryClient = useQueryClient()
 const tasksStore = useTasksStore()
+
+const TODAY = new Date().toISOString().slice(0, 10)
+
+function priorityLabel(p: number) {
+  return p === 3 ? 'High' : p === 1 ? 'Low' : 'Med'
+}
+
+function priorityClass(p: number) {
+  return p === 3
+    ? 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300'
+    : p === 1
+      ? 'bg-surface-100 text-surface-500 dark:bg-surface-700 dark:text-surface-400'
+      : 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-300'
+}
+
+const expandedNotes = ref<string[]>([])
+function toggleNotes(id: string) {
+  const idx = expandedNotes.value.indexOf(id)
+  if (idx >= 0) expandedNotes.value.splice(idx, 1)
+  else expandedNotes.value.push(id)
+}
 
 const TASKS_KEY = ['tasks'] as const
 
@@ -51,15 +75,47 @@ const unbind = wippy.on('tasks:changed', () => {
 })
 onUnmounted(() => unbind?.())
 
+const PRIORITY_OPTIONS = [
+  { label: 'Low', value: 1 },
+  { label: 'Medium', value: 2 },
+  { label: 'High', value: 3 },
+]
+
 const newTitle = ref('')
+const newPriority = ref(2)
+const newDueDate = ref<Date | null>(null)
+const newNotes = ref('')
+const showMoreFields = ref(false)
+
+function resetForm() {
+  newTitle.value = ''
+  newPriority.value = 2
+  newDueDate.value = null
+  newNotes.value = ''
+  showMoreFields.value = false
+}
+
+function formatDate(d: Date | null): string | undefined {
+  if (!d) return undefined
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
+}
 
 const createMutation = useMutation({
-  mutationFn: async (title: string) => {
-    const { data } = await api.post('/api/v1/tasks', { title })
+  mutationFn: async () => {
+    const body: Record<string, unknown> = { title: newTitle.value.trim() }
+    if (newPriority.value !== 2) body.priority = newPriority.value
+    const due = formatDate(newDueDate.value)
+    if (due) body.due_date = due
+    const notes = newNotes.value.trim()
+    if (notes) body.notes = notes
+    const { data } = await api.post('/api/v1/tasks', body)
     return data
   },
   onSuccess: () => {
-    newTitle.value = ''
+    resetForm()
     queryClient.invalidateQueries({ queryKey: TASKS_KEY })
   },
   onError: () => {
@@ -70,7 +126,7 @@ const createMutation = useMutation({
 function addTask() {
   const t = newTitle.value.trim()
   if (!t) return
-  createMutation.mutate(t)
+  createMutation.mutate()
 }
 
 const toggleMutation = useMutation({
@@ -132,31 +188,89 @@ function removeTask(task: Task) {
     </div>
 
     <div class="px-5 py-3 border-b border-surface-200 dark:border-surface-700 bg-surface-card shrink-0">
-      <form
-        class="flex gap-2"
-        @submit.prevent="addTask"
-      >
-        <InputText
-          v-model="newTitle"
-          placeholder="Add a task and press Enter…"
-          fluid
-          :disabled="createMutation.isPending.value"
-        />
-        <Button
-          type="submit"
-          label="Add"
-          size="small"
-          :disabled="!newTitle.trim() || createMutation.isPending.value"
-          :loading="createMutation.isPending.value"
+      <form @submit.prevent="addTask">
+        <div class="flex gap-2">
+          <InputText
+            v-model="newTitle"
+            placeholder="Add a task…"
+            fluid
+            :disabled="createMutation.isPending.value"
+          />
+          <Button
+            type="button"
+            text
+            rounded
+            size="small"
+            class="!p-1.5 shrink-0"
+            :aria-label="showMoreFields ? 'Hide details' : 'Show details'"
+            @click="showMoreFields = !showMoreFields"
+          >
+            <template #icon>
+              <Icon
+                :icon="showMoreFields ? 'tabler:chevron-up' : 'tabler:dots'"
+                class="w-4 h-4"
+                aria-hidden="true"
+              />
+            </template>
+          </Button>
+          <Button
+            type="submit"
+            label="Add"
+            size="small"
+            :disabled="!newTitle.trim() || createMutation.isPending.value"
+            :loading="createMutation.isPending.value"
+          >
+            <template #icon>
+              <Icon
+                icon="tabler:plus"
+                class="w-4 h-4"
+                aria-hidden="true"
+              />
+            </template>
+          </Button>
+        </div>
+        <div
+          v-if="showMoreFields"
+          class="mt-3 grid grid-cols-2 gap-3"
         >
-          <template #icon>
-            <Icon
-              icon="tabler:plus"
-              class="w-4 h-4"
-              aria-hidden="true"
+          <div>
+            <label class="block mb-1 text-xs font-medium text-muted-color">Priority</label>
+            <Select
+              v-model="newPriority"
+              :options="PRIORITY_OPTIONS"
+              option-label="label"
+              option-value="value"
+              fluid
+              size="small"
+              aria-label="Priority"
             />
-          </template>
-        </Button>
+          </div>
+          <div>
+            <label class="block mb-1 text-xs font-medium text-muted-color">Due date</label>
+            <DatePicker
+              v-model="newDueDate"
+              date-format="yy-mm-dd"
+              :min-date="new Date()"
+              fluid
+              size="small"
+              show-icon
+              show-button-bar
+              placeholder="No date"
+              aria-label="Due date"
+            />
+          </div>
+          <div class="col-span-2">
+            <label class="block mb-1 text-xs font-medium text-muted-color">Notes</label>
+            <Textarea
+              v-model="newNotes"
+              rows="2"
+              fluid
+              auto-resize
+              placeholder="Optional notes…"
+              aria-label="Notes"
+            />
+          </div>
+        </div>
       </form>
     </div>
 
@@ -189,38 +303,81 @@ function removeTask(task: Task) {
         <li
           v-for="task in visibleTasks"
           :key="task.id"
-          class="group flex items-center gap-3 px-5 py-3 hover:bg-surface-50 dark:hover:bg-surface-900/50"
+          class="group"
+          :class="task.due_date && task.due_date < TODAY && !task.done
+            ? 'bg-red-50/50 dark:bg-red-900/10'
+            : ''"
         >
-          <Checkbox
-            :model-value="task.done"
-            binary
-            :aria-label="task.done ? `Mark ${task.title} as open` : `Mark ${task.title} as done`"
-            @update:model-value="toggleDone(task)"
-          />
-          <span
-            class="flex-1 text-sm"
-            :class="task.done
-              ? 'line-through text-surface-400'
-              : 'text-surface-900 dark:text-surface-0'"
+          <div class="flex items-center gap-3 px-5 py-3 hover:bg-surface-50 dark:hover:bg-surface-900/50">
+            <Checkbox
+              :model-value="task.done"
+              binary
+              :aria-label="task.done ? `Mark ${task.title} as open` : `Mark ${task.title} as done`"
+              @update:model-value="toggleDone(task)"
+            />
+            <span
+              class="flex-1 text-sm"
+              :class="task.done
+                ? 'line-through text-surface-400'
+                : 'text-surface-900 dark:text-surface-0'"
+            >
+              {{ task.title }}
+            </span>
+            <span
+              v-if="task.priority !== undefined && task.priority !== 2"
+              class="text-[10px] font-medium px-1.5 py-0.5 rounded"
+              :class="priorityClass(task.priority)"
+            >
+              {{ priorityLabel(task.priority) }}
+            </span>
+            <span
+              v-if="task.due_date && !task.done"
+              class="text-[10px] font-medium px-1.5 py-0.5 rounded"
+              :class="task.due_date < TODAY
+                ? 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300'
+                : 'bg-surface-100 text-surface-500 dark:bg-surface-700 dark:text-surface-400'"
+            >
+              {{ task.due_date }}
+            </span>
+            <Button
+              v-if="task.notes"
+              text
+              rounded
+              class="!p-1.5"
+              :aria-label="`${expandedNotes.includes(task.id) ? 'Hide' : 'Show'} notes`"
+              @click="toggleNotes(task.id)"
+            >
+              <template #icon>
+                <Icon
+                  :icon="expandedNotes.includes(task.id) ? 'tabler:chevron-up' : 'tabler:notes'"
+                  class="w-4 h-4 text-surface-400"
+                  aria-hidden="true"
+                />
+              </template>
+            </Button>
+            <Button
+              text
+              rounded
+              severity="danger"
+              class="!p-1.5 opacity-0 group-hover:opacity-100 transition-opacity"
+              :aria-label="`Delete ${task.title}`"
+              @click="removeTask(task)"
+            >
+              <template #icon>
+                <Icon
+                  icon="tabler:trash"
+                  class="w-4 h-4"
+                  aria-hidden="true"
+                />
+              </template>
+            </Button>
+          </div>
+          <div
+            v-if="task.notes && expandedNotes.includes(task.id)"
+            class="px-5 pb-3 ml-9 text-sm text-surface-500 dark:text-surface-400 whitespace-pre-wrap"
           >
-            {{ task.title }}
-          </span>
-          <Button
-            text
-            rounded
-            severity="danger"
-            class="!p-1.5 opacity-0 group-hover:opacity-100 transition-opacity"
-            :aria-label="`Delete ${task.title}`"
-            @click="removeTask(task)"
-          >
-            <template #icon>
-              <Icon
-                icon="tabler:trash"
-                class="w-4 h-4"
-                aria-hidden="true"
-              />
-            </template>
-          </Button>
+            {{ task.notes }}
+          </div>
         </li>
       </ul>
 

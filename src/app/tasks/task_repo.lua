@@ -13,9 +13,12 @@ end
 
 local function row_to_task(row)
     return {
-        id = row.id,
-        title = row.title,
-        done = tonumber(row.done) == 1,
+        id         = row.id,
+        title      = row.title,
+        done       = tonumber(row.done) == 1,
+        notes      = row.notes,
+        due_date   = row.due_date,
+        priority   = tonumber(row.priority) or 2,
         created_at = tonumber(row.created_at),
         updated_at = tonumber(row.updated_at),
     }
@@ -25,7 +28,7 @@ local function list(user_id, filter)
     local db, err = get_db()
     if err then return nil, err end
 
-    local query = "SELECT id, title, done, created_at, updated_at FROM tasks WHERE user_id = ?"
+    local query = "SELECT id, title, done, notes, due_date, priority, created_at, updated_at FROM tasks WHERE user_id = ?"
     local args = { user_id }
 
     if filter == "open" then
@@ -33,7 +36,14 @@ local function list(user_id, filter)
     elseif filter == "done" then
         query = query .. " AND done = 1"
     end
-    query = query .. " ORDER BY created_at DESC"
+    query = query .. " ORDER BY "
+        .. "CASE WHEN done = 0 AND due_date IS NOT NULL AND due_date < date('now') THEN 0 "
+        ..      "WHEN done = 0 THEN 1 ELSE 2 END ASC, "
+        .. "CASE WHEN done = 1 THEN 0 ELSE priority END DESC, "
+        .. "CASE WHEN done = 1 THEN 0 WHEN due_date IS NULL THEN 1 ELSE 0 END ASC, "
+        .. "due_date ASC, "
+        .. "CASE WHEN done = 1 THEN updated_at ELSE 0 END DESC, "
+        .. "created_at DESC"
 
     local rows, q_err = db:query(query, args)
     db:release()
@@ -51,7 +61,7 @@ local function get(user_id, id)
     if err then return nil, err end
 
     local rows, q_err = db:query(
-        "SELECT id, title, done, created_at, updated_at FROM tasks WHERE user_id = ? AND id = ?",
+        "SELECT id, title, done, notes, due_date, priority, created_at, updated_at FROM tasks WHERE user_id = ? AND id = ?",
         { user_id, id }
     )
     db:release()
@@ -60,22 +70,24 @@ local function get(user_id, id)
     return row_to_task(rows[1])
 end
 
-local function create(user_id, title)
+local function create(user_id, title, opts)
     if not title or title == "" then return nil, "title is required" end
+    opts = opts or {}
 
     local db, err = get_db()
     if err then return nil, err end
 
     local id = uuid.v7()
     local ts = now()
+    local priority = opts.priority or 2
     local _, e_err = db:execute(
-        "INSERT INTO tasks (id, user_id, title, done, created_at, updated_at) VALUES (?, ?, ?, 0, ?, ?)",
-        { id, user_id, title, ts, ts }
+        "INSERT INTO tasks (id, user_id, title, done, notes, due_date, priority, created_at, updated_at) VALUES (?, ?, ?, 0, ?, ?, ?, ?, ?)",
+        { id, user_id, title, opts.notes, opts.due_date, priority, ts, ts }
     )
     db:release()
     if e_err then return nil, e_err end
 
-    return { id = id, title = title, done = false, created_at = ts, updated_at = ts }
+    return { id = id, title = title, done = false, notes = opts.notes, due_date = opts.due_date, priority = priority, created_at = ts, updated_at = ts }
 end
 
 local function update(user_id, id, fields)
@@ -87,6 +99,18 @@ local function update(user_id, id, fields)
     if fields.done ~= nil then
         table.insert(sets, "done = ?")
         table.insert(args, fields.done and 1 or 0)
+    end
+    if fields.notes ~= nil then
+        table.insert(sets, "notes = ?")
+        table.insert(args, fields.notes ~= "" and fields.notes or nil)
+    end
+    if fields.due_date ~= nil then
+        table.insert(sets, "due_date = ?")
+        table.insert(args, fields.due_date ~= "" and fields.due_date or nil)
+    end
+    if fields.priority ~= nil then
+        table.insert(sets, "priority = ?")
+        table.insert(args, fields.priority)
     end
     if #sets == 0 then return nil, "no fields to update" end
 
