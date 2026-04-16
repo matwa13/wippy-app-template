@@ -17,6 +17,20 @@ entries:
       migration: wippy.migration:migration
     method: migrate
 
+  - name: 02_add_fields
+    kind: function.lua
+    meta:
+      type: migration
+      target_db: app:db
+      description: Add notes, due_date, priority to tasks
+      depends_on:
+        - ns:wippy.migration
+      timestamp: "2026-04-16T00:00:00Z"
+    source: file://migrations/02_add_fields.lua
+    imports:
+      migration: wippy.migration:migration
+    method: migrate
+
   # --- Shared repo ---
   - name: task_repo
     kind: library.lua
@@ -122,13 +136,16 @@ entries:
         {
           "type": "object",
           "properties": {
-            "title": { "type": "string", "description": "Title of the task to create" }
+            "title":    { "type": "string", "description": "Title of the task to create" },
+            "notes":    { "type": "string", "description": "Optional freeform notes" },
+            "due_date": { "type": "string", "description": "Due date in ISO format e.g. 2026-04-20" },
+            "priority": { "type": "string", "enum": ["low", "medium", "high"], "description": "Task priority, default medium" }
           },
           "required": ["title"],
           "additionalProperties": false
         }
       llm_alias: AddTask
-      llm_description: Add a new task to the user's personal task list.
+      llm_description: Add a new task to the user's personal task list. Optionally set notes, due_date, and priority.
     source: file://tools/add_task.lua
     modules:
       - ctx
@@ -220,6 +237,35 @@ entries:
     pool:
       size: 2
 
+  - name: update_task_tool
+    kind: function.lua
+    meta:
+      type: tool
+      title: Update Task
+      input_schema: |
+        {
+          "type": "object",
+          "properties": {
+            "title":    { "type": "string", "description": "Title (or substring) of the task to update" },
+            "id":       { "type": "string", "description": "Exact task id (preferred when known)" },
+            "notes":    { "type": "string", "description": "Free-text notes to attach (empty string to clear)" },
+            "due_date": { "type": "string", "description": "ISO date e.g. 2026-04-20 (empty string to clear)" },
+            "priority": { "type": "string", "enum": ["low", "medium", "high"], "description": "Task priority" }
+          },
+          "additionalProperties": false
+        }
+      llm_alias: UpdateTask
+      llm_description: Update notes, due_date, or priority on an existing task. Identify by id or title.
+    source: file://tools/update_task_tool.lua
+    modules:
+      - ctx
+    imports:
+      task_repo: app.tasks:task_repo
+      tools_common: app.tasks:tools_common
+    method: handler
+    pool:
+      size: 2
+
   # --- Agent trait bundling all task tools ---
   - name: tasks_trait
     kind: registry.entry
@@ -230,16 +276,21 @@ entries:
         - tasks
     prompt: |
       You also manage the user's personal tasks.
-      - AddTask(title) — create a task.
+      - AddTask(title, notes?, due_date?, priority?) — create a task. priority is "low", "medium", or "high".
       - ListTasks(filter?) — list tasks; filter one of "all" | "open" | "done".
+      - UpdateTask({title or id}, notes?, due_date?, priority?) — update fields on an existing task.
       - CompleteTask({title} or {id}) — mark a task done.
       - DeleteTask({title} or {id}) — delete a task.
+      due_date must be a full ISO date with year, e.g. "2026-04-20". When the user says "April 7th" without a year, use the current year — never guess a past year.
       When the user refers to a task by name, pass it as `title` and trust the fuzzy match.
       If the tool returns candidates, ask the user to disambiguate.
-      After ListTasks, render results as a short markdown checklist: `- [ ] title` for open, `- [x] title` for done.
+      After ListTasks, render results as a markdown checklist:
+        `- [ ] **[HIGH]** Buy groceries (due 2026-04-20)` — include priority label only if not medium; include due date if set.
+        `- [x] title` for done tasks.
       After mutations, give a one-line confirmation.
     tools:
       - app.tasks:add_task
       - app.tasks:list_tasks_tool
+      - app.tasks:update_task_tool
       - app.tasks:complete_task
       - app.tasks:delete_task_tool

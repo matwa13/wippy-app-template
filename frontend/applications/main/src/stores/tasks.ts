@@ -5,6 +5,9 @@ export interface Task {
   id: string
   title: string
   done: boolean
+  notes?: string | null
+  due_date?: string | null
+  priority: number
   created_at: number
   updated_at: number
 }
