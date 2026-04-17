@@ -17,7 +17,7 @@
       "path": "frontend/docs/component-guide.md",
       "title": "Web Component Guide",
       "category": "reference",
-      "summary": "Building web components with WippyVueElement, Shadow DOM, props, events, PrimeVue, Tailwind"e
+      "summary": "Building web components with WippyVueElement, Shadow DOM, props, events, PrimeVue, Tailwind"
     },
     {
       "path": "frontend/docs/app-guide.md",
@@ -50,10 +50,22 @@
       "summary": "Vue 3, Tailwind CSS, PrimeVue, accessibility, and code quality conventions"
     },
     {
-      "path": "docs/specs/tasks-agent.md",
+      "path": "docs/PLAN.md",
+      "title": "Project Plan",
+      "category": "spec",
+      "summary": "Main file with planning and projects state"
+    },
+    {
+      "path": "docs/specs/task-agent.md",
       "title": "Task Agent feature",
       "category": "spec",
       "summary": "Task Agent feature state and plan"
+    },
+    {
+      "path": "docs/specs/trip-planner.md",
+      "title": "Trip Planner feature",
+      "category": "spec",
+      "summary": "Dataflow-driven trip planner: chat/form entry, concurrent research (attractions/packing/flights), critic cycle, task generation"
     }
   ]
 }
