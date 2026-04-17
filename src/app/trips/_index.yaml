@@ -1,0 +1,58 @@
+version: "1.0"
+namespace: app.trips
+
+entries:
+  # --- Migrations ---
+  - name: 01_init
+    kind: function.lua
+    meta:
+      type: migration
+      target_db: app:db
+      description: Create trips table
+      depends_on:
+        - ns:wippy.migration
+      timestamp: "2026-04-17T00:00:00Z"
+    source: file://migrations/01_init.lua
+    imports:
+      migration: wippy.migration:migration
+    method: migrate
+
+  - name: 02_tasks_fields
+    kind: function.lua
+    meta:
+      type: migration
+      target_db: app:db
+      description: Add trip_id and scheduled_at to tasks
+      depends_on:
+        - ns:wippy.migration
+        - ns:app.tasks
+      timestamp: "2026-04-17T00:00:01Z"
+    source: file://migrations/02_tasks_fields.lua
+    imports:
+      migration: wippy.migration:migration
+    method: migrate
+
+  # --- Shared libs ---
+  - name: trip_repo
+    kind: library.lua
+    source: file://trip_repo.lua
+    modules:
+      - sql
+      - uuid
+      - json
+
+  - name: trips_common
+    kind: library.lua
+    source: file://trips_common.lua
+
+  # --- Tests ---
+  - name: trips_test
+    kind: function.lua
+    meta:
+      type: test
+      suite: trips
+    source: file://trip_repo_test.lua
+    method: run
+    imports:
+      test: wippy.test:test
+      trip_repo: app.trips:trip_repo
