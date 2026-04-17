@@ -66,6 +66,28 @@ entries:
     func: list_trips
     path: /trips
 
+  - name: create_trip
+    kind: function.lua
+    source: file://api/create_trip.lua
+    modules:
+      - http
+      - json
+      - security
+    imports:
+      trip_repo: app.trips:trip_repo
+      trips_common: app.trips:trips_common
+    method: handler
+    pool:
+      size: 2
+
+  - name: create_trip.endpoint
+    kind: http.endpoint
+    meta:
+      router: app:api
+    method: POST
+    func: create_trip
+    path: /trips
+
   # --- Tests ---
   - name: trips_test
     kind: function.lua
