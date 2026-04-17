@@ -45,6 +45,27 @@ entries:
     kind: library.lua
     source: file://trips_common.lua
 
+  # --- HTTP handlers ---
+  - name: list_trips
+    kind: function.lua
+    source: file://api/list_trips.lua
+    modules:
+      - http
+      - security
+    imports:
+      trip_repo: app.trips:trip_repo
+    method: handler
+    pool:
+      size: 2
+
+  - name: list_trips.endpoint
+    kind: http.endpoint
+    meta:
+      router: app:api
+    method: GET
+    func: list_trips
+    path: /trips
+
   # --- Tests ---
   - name: trips_test
     kind: function.lua
