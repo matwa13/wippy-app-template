@@ -2,11 +2,13 @@ local trip_repo = require("trip_repo")
 local trip_flow = require("trip_flow")
 local trips_common = require("trips_common")
 
---- Create a trip row and start its workflow. Returns {trip_id, url}.
 local function create_trip(user_id, input)
+    local destination = trips_common.canonicalize_destination(input.destination)
+    local origin = input.origin and trips_common.canonicalize_destination(input.origin) or nil
+
     local trip, err = trip_repo.create(user_id, {
-        destination = trips_common.canonicalize_destination(input.destination),
-        origin      = input.origin and trips_common.canonicalize_destination(input.origin) or nil,
+        destination = destination,
+        origin      = origin,
         start_date  = input.start_date,
         end_date    = input.end_date,
     })
@@ -15,8 +17,8 @@ local function create_trip(user_id, input)
     local workflow_id, f_err = trip_flow.build_and_start({
         trip_id     = trip.id,
         user_id     = user_id,
-        destination = trip.destination or input.destination,
-        origin      = input.origin,
+        destination = destination,
+        origin      = origin,
         start_date  = input.start_date,
         end_date    = input.end_date,
     })
