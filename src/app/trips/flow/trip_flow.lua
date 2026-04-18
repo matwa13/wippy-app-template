@@ -19,6 +19,9 @@ local function build_and_start(input)
         :with_input(input)
 
         :func("app.trips:normalize_input"):as("normalize_input")
+        :to("attractions_research")
+        :to("packing_research")
+        :to("flights_linker")
 
         -- Three concurrent siblings off normalize_input.
         :agent("app.agents:trip_attractions_researcher", {
