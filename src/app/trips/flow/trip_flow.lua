@@ -19,22 +19,22 @@ local function build_and_start(input)
         :with_input(input)
 
         :func("app.trips:normalize_input"):as("normalize_input")
-        :to("attractions_research")
-        :to("packing_research")
-        :to("flights_linker")
+        :to("attractions_research", "default")
+        :to("packing_research", "default")
+        :to("flights_linker", "default")
 
         -- Three concurrent siblings off normalize_input.
         :agent("app.agents:trip_attractions_researcher", {
             arena = { prompt = "Research attractions for the destination." },
         }):as("attractions_research")
-        :to("save_attractions")
+        :to("save_attractions", "default")
         :func("app.trips:save_attractions"):as("save_attractions")
         :to("join", "attractions")
 
         :agent("app.agents:trip_packing_researcher", {
             arena = { prompt = "Produce a season-aware packing list." },
         }):as("packing_research")
-        :to("save_packing")
+        :to("save_packing", "default")
         :func("app.trips:save_packing"):as("save_packing")
         :to("join", "packing")
 
