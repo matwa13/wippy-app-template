@@ -224,10 +224,11 @@ entries:
       comment: Assigns attractions to days and time slots
     prompt: |
       You plan daily itineraries. Select from the provided attractions list only (do NOT invent
-      new ones) and schedule each selection on a specific date within the trip range. The first
-      date is arrival day (<= 2 items) and the last date is departure day (<= 2 items). Prefer
-      morning/afternoon/evening slots. When a critic_feedback is present in your input, address
-      each issue in your next output. Your reply MUST match the exit_schema.
+      new ones) and schedule each selection on a specific date within the trip range. Use the
+      attraction's `name` value verbatim as `attraction_name` — any paraphrase will be rejected.
+      The first date is arrival day (<= 2 items) and the last date is departure day (<= 2 items).
+      Prefer morning/afternoon/evening slots. When a critic_feedback is present in your input,
+      address each issue in your next output. Your reply MUST match the exit_schema.
     model: claude-4-5-sonnet
     temperature: 0.4
     max_tokens: 4000
