@@ -40,11 +40,16 @@ local function define_tests()
                 start_date = "2026-06-01", end_date = "2026-06-05",
                 google_flights_url = "", skyscanner_url = "",
                 packing = nil,
-                itinerary = {},
+                itinerary = {
+                    { date = "2026-06-02", attraction_name = "Colosseum",
+                      description = "", time_slot = "morning",
+                      estimated_duration_hours = 1, constraints = {} },
+                },
             })
-            -- flights only (no packing, no attractions)
-            test.eq(#rows, 1)
+            -- flights + one attraction, no packing task
+            test.eq(#rows, 2)
             test.eq(rows[1].title:sub(1, 5), "Book ")
+            test.eq(rows[2].title, "Visit Colosseum")
         end)
 
         test.it("omits flights task when itinerary is empty (no itinerary → no tasks except flights?)", function()

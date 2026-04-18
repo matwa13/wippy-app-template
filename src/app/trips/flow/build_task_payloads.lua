@@ -68,11 +68,7 @@ end
 local function build(ctx)
     local rows = {}
     local itinerary = ctx.itinerary or {}
-    local packing = ctx.packing
-
-    -- When itinerary is empty and packing is present, nothing useful to create.
-    -- When itinerary is empty but packing is nil, still emit the flights booking task.
-    if #itinerary == 0 and packing and #packing > 0 then return rows end
+    if #itinerary == 0 then return rows end
 
     -- Flights task (priority 3 = high)
     table.insert(rows, {
