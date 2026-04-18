@@ -26,7 +26,8 @@
 | 2C.5 race + url_encode | ✅ | `891b58a` + `cb7b401` | `json_patch`/`json_set` collapse 3 helpers to single UPDATE (race eliminated); space → `%20` for path-segment URLs |
 | 14. `trip_flow.lua` DAG assembly | ✅ | `1c6ac1f` + `b9a34c1` + `6ea2b08` | spec ✅ + quality ✅ (2 bugs caught & fixed in review loop: fan-out dead nodes → `b9a34c1`; discriminator wrapping → `6ea2b08`) |
 | 15. `trip_service` + wire HTTP POST | ✅ | `48ea74d` + `d4b883e` | spec ✅ + quality ✅; review caught latent canonicalization bug in the plan's snippet (`trip.destination or input.destination` always fell through to raw input because `trip_repo.create` returns only `{id,title,status}`) — fixed by canonicalizing once up front |
-| 16-25 | ⬜ | | Task 16 = chat tool (`plan_trip` + `trips_trait`); Phase 3 (frontend) after that — pause for user |
+| 16. `plan_trip` tool + `trips_trait` | ✅ | `a38b3cf` | spec ✅ + quality ✅ (only caveat = `trips` missing from NavigateTo enum, which is literally Task 17) |
+| 17-25 | ⬜ | | Task 17 = NavigateTo /trips wiring; Phase 3 (frontend) starts at Task 18 — pause for user |
 
 **All trips tests:** 21/21 pass as of `be07b3f`.
 
