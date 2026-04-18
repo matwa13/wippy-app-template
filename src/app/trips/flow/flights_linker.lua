@@ -3,9 +3,9 @@ local trips_common = require("trips_common")
 
 local function url_encode(s)
     if not s then return "" end
-    return (s:gsub("([^%w _-])", function(c)
+    return (s:gsub("([^%w_-])", function(c)
         return string.format("%%%02X", string.byte(c))
-    end):gsub(" ", "+"))
+    end))
 end
 
 local function build_google(origin, destination, start_date, end_date)
