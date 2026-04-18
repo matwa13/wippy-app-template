@@ -4,6 +4,7 @@ local M = {}
 
 --- Broadcast a trips:changed event to the given user hub.
 function M.notify(user_id, trip_id)
+    if not user_id then return end
     local hub_pid = process.registry.lookup(USER_HUB_PREFIX .. user_id)
     if hub_pid then
         process.send(hub_pid, "trips:changed", { trip_id = trip_id })
@@ -13,7 +14,9 @@ end
 --- Canonicalize destination: trim + title-case words, squeeze spaces.
 function M.canonicalize_destination(s)
     if not s then return "" end
-    s = (s:gsub("^%s+", ""):gsub("%s+$", ""):gsub("%s+", " "))
+    s = s:gsub("^%s+", "")
+    s = s:gsub("%s+$", "")
+    s = s:gsub("%s+", " ")
     return (s:gsub("(%a)([%w']*)", function(first, rest)
         return first:upper() .. rest:lower()
     end))

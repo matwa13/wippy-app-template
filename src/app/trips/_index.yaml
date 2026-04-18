@@ -109,6 +109,17 @@ entries:
     func: get_trip
     path: /trips/{id}
 
+  # --- Flow func nodes ---
+  - name: normalize_input
+    kind: function.lua
+    source: file://flow/normalize_input.lua
+    imports:
+      trip_repo: app.trips:trip_repo
+      trips_common: app.trips:trips_common
+    method: handler
+    pool:
+      size: 2
+
   # --- Tests ---
   - name: trips_test
     kind: function.lua
@@ -120,3 +131,14 @@ entries:
     imports:
       test: wippy.test:test
       trip_repo: app.trips:trip_repo
+
+  - name: normalize_input_test
+    kind: function.lua
+    meta:
+      type: test
+      suite: trips
+    source: file://normalize_input_test.lua
+    method: run
+    imports:
+      test: wippy.test:test
+      normalize_input: app.trips:normalize_input
