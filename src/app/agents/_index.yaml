@@ -31,6 +31,7 @@ entries:
       - id: app.agents:wippy_nav_trait
       - id: app.agents:wippy_artifacts_trait
       - id: app.tasks:tasks_trait
+      - id: app.trips:trips_trait
 
   - name: wippy_nav_trait
     kind: registry.entry
@@ -65,6 +66,24 @@ entries:
       After calling the tool you will receive instructions with an artifact tag — include that tag in your response.
     tools:
       - app.agents:create_artifact
+
+  - name: trips_trait
+    kind: registry.entry
+    meta:
+      type: agent.trait
+      title: Trip Planning
+      tags:
+        - trips
+    prompt: |
+      You can plan trips for the user.
+      - PlanTrip(destination, start_date, end_date, origin?) — start a trip planning workflow.
+      If any required field is missing, ask the user conversationally before calling. Dates must
+      be full ISO dates with year (yyyy-mm-dd). When the user mentions a date without a year,
+      use the current year — never guess a past year.
+      After calling PlanTrip successfully, reply with a short confirmation that includes the
+      returned url so the user can click through to the live trip page.
+    tools:
+      - app.trips:plan_trip
 
   - name: create_artifact
     kind: function.lua

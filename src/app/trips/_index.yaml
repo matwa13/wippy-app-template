@@ -192,6 +192,38 @@ entries:
     pool:
       size: 2
 
+  # --- Agent tools ---
+  - name: plan_trip
+    kind: function.lua
+    meta:
+      type: tool
+      title: Plan Trip
+      input_schema: |
+        {
+          "type": "object",
+          "properties": {
+            "destination": { "type": "string", "description": "City/region name" },
+            "origin":      { "type": "string", "description": "Departure city (optional)" },
+            "start_date":  { "type": "string", "description": "yyyy-mm-dd" },
+            "end_date":    { "type": "string", "description": "yyyy-mm-dd" }
+          },
+          "required": ["destination", "start_date", "end_date"],
+          "additionalProperties": false
+        }
+      llm_alias: PlanTrip
+      llm_description: |
+        Kick off a trip-planning workflow. Creates a trip row, starts the research/itinerary
+        workflow, and returns {trip_id, url}. Require destination, start_date, end_date. Ask the
+        user for any missing field before calling — never guess dates.
+    source: file://tools/plan_trip.lua
+    modules:
+      - ctx
+    imports:
+      trip_service: app.trips:trip_service
+    method: handler
+    pool:
+      size: 2
+
   # --- Tests ---
   - name: trips_test
     kind: function.lua
