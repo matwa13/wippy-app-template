@@ -147,6 +147,26 @@ entries:
     pool:
       size: 2
 
+  - name: save_attractions
+    kind: function.lua
+    source: file://flow/save_attractions.lua
+    imports:
+      trip_repo: app.trips:trip_repo
+      trips_common: app.trips:trips_common
+    method: handler
+    pool:
+      size: 2
+
+  - name: save_packing
+    kind: function.lua
+    source: file://flow/save_packing.lua
+    imports:
+      trip_repo: app.trips:trip_repo
+      trips_common: app.trips:trips_common
+    method: handler
+    pool:
+      size: 2
+
   # --- Tests ---
   - name: trips_test
     kind: function.lua
