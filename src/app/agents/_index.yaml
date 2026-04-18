@@ -146,3 +146,138 @@ entries:
     method: handler
     pool:
       size: 2
+
+  - name: trip_attractions_researcher
+    kind: registry.entry
+    meta:
+      type: agent.gen1
+      title: Trip Attractions Researcher
+      comment: Returns up to 12 candidate attractions for a destination
+    prompt: |
+      You are a travel research agent. Given a destination and trip dates, return up to 12
+      notable attractions as stable facts about that place. Do NOT schedule them — another
+      agent handles planning. Prefer well-known sights; include a short description, a typical
+      visit duration in hours, and any constraints that would affect scheduling (e.g. closed
+      on certain days, best at sunset). Your reply MUST match the exit_schema.
+    model: claude-4-5-sonnet
+    temperature: 0.3
+    max_tokens: 4000
+    arena:
+      max_iterations: 3
+      exit_schema:
+        type: object
+        required: [attractions]
+        additionalProperties: false
+        properties:
+          attractions:
+            type: array
+            maxItems: 12
+            items:
+              type: object
+              required: [name, description, typical_duration_hours, constraints]
+              additionalProperties: false
+              properties:
+                name: { type: string }
+                description: { type: string }
+                typical_duration_hours: { type: number }
+                constraints:
+                  type: array
+                  items: { type: string }
+
+  - name: trip_packing_researcher
+    kind: registry.entry
+    meta:
+      type: agent.gen1
+      title: Trip Packing Researcher
+      comment: Climate/season-aware packing list
+    prompt: |
+      You are a travel packing advisor. Given a destination, dates, and inferred season,
+      produce a concise, practical packing list grouped by category. Focus on what the climate
+      and likely activities require. Your reply MUST match the exit_schema.
+    model: claude-4-5-haiku
+    temperature: 0.3
+    max_tokens: 2000
+    arena:
+      max_iterations: 3
+      exit_schema:
+        type: object
+        required: [packing]
+        additionalProperties: false
+        properties:
+          packing:
+            type: array
+            items:
+              type: object
+              required: [category, items]
+              additionalProperties: false
+              properties:
+                category: { type: string }
+                items:
+                  type: array
+                  items: { type: string }
+
+  - name: trip_itinerary_synthesizer
+    kind: registry.entry
+    meta:
+      type: agent.gen1
+      title: Trip Itinerary Synthesizer
+      comment: Assigns attractions to days and time slots
+    prompt: |
+      You plan daily itineraries. Select from the provided attractions list only (do NOT invent
+      new ones) and schedule each selection on a specific date within the trip range. The first
+      date is arrival day (<= 2 items) and the last date is departure day (<= 2 items). Prefer
+      morning/afternoon/evening slots. When a critic_feedback is present in your input, address
+      each issue in your next output. Your reply MUST match the exit_schema.
+    model: claude-4-5-sonnet
+    temperature: 0.4
+    max_tokens: 4000
+    arena:
+      max_iterations: 4
+      exit_func_id: app.trips:validate_synthesizer_exit
+      exit_schema:
+        type: object
+        required: [itinerary]
+        additionalProperties: false
+        properties:
+          itinerary:
+            type: array
+            items:
+              type: object
+              required: [date, attraction_name, time_slot, estimated_duration_hours, description, constraints]
+              additionalProperties: false
+              properties:
+                date: { type: string }
+                attraction_name: { type: string }
+                time_slot: { type: string, enum: [morning, afternoon, evening] }
+                estimated_duration_hours: { type: number }
+                description: { type: string }
+                constraints:
+                  type: array
+                  items: { type: string }
+
+  - name: trip_itinerary_critic
+    kind: registry.entry
+    meta:
+      type: agent.gen1
+      title: Trip Itinerary Critic
+      comment: Reviews itineraries and reports issues
+    prompt: |
+      You are an experienced travel planner reviewing the itinerary produced by the synthesizer.
+      Check for: arrival/departure over-scheduling, pacing (too many long visits in one day),
+      geographic thrash (consecutive items on opposite sides of the city), ignored constraints
+      (e.g. "closed Mondays"). Emit status="ok" only if the plan is acceptable. Otherwise return
+      concrete issues the synthesizer can fix. Your reply MUST match the exit_schema.
+    model: claude-4-5-haiku
+    temperature: 0.3
+    max_tokens: 2000
+    arena:
+      max_iterations: 3
+      exit_schema:
+        type: object
+        required: [status, issues]
+        additionalProperties: false
+        properties:
+          status: { type: string, enum: [ok, revise] }
+          issues:
+            type: array
+            items: { type: string }
