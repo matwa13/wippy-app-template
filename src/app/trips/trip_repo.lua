@@ -118,18 +118,10 @@ end
 local function update_node_state(id, node_key, patch)
     local db, err = get_db()
     if err then return nil, err end
-    local rows, q_err = db:query("SELECT workflow_state FROM trips WHERE id = ?", { id })
-    if q_err then db:release(); return nil, q_err end
-    if #rows == 0 then db:release(); return nil, "not_found" end
-
-    local ws = rows[1].workflow_state and json.decode(rows[1].workflow_state) or { nodes = {} }
-    ws.nodes = ws.nodes or {}
-    ws.nodes[node_key] = ws.nodes[node_key] or {}
-    for k, v in pairs(patch) do ws.nodes[node_key][k] = v end
-
+    local payload = json.encode({ nodes = { [node_key] = patch } })
     local _, e_err = db:execute(
-        "UPDATE trips SET workflow_state = ?, updated_at = ? WHERE id = ?",
-        { json.encode(ws), now(), id })
+        "UPDATE trips SET workflow_state = json_patch(COALESCE(workflow_state, '{}'), ?), updated_at = ? WHERE id = ?",
+        { payload, now(), id })
     db:release()
     return e_err == nil, e_err
 end
@@ -138,16 +130,10 @@ end
 local function update_plan_section(id, key, value)
     local db, err = get_db()
     if err then return nil, err end
-    local rows, q_err = db:query("SELECT plan_json FROM trips WHERE id = ?", { id })
-    if q_err then db:release(); return nil, q_err end
-    if #rows == 0 then db:release(); return nil, "not_found" end
-
-    local plan = rows[1].plan_json and json.decode(rows[1].plan_json) or {}
-    plan[key] = value
-
+    local payload = json.encode({ [key] = value })
     local _, e_err = db:execute(
-        "UPDATE trips SET plan_json = ?, updated_at = ? WHERE id = ?",
-        { json.encode(plan), now(), id })
+        "UPDATE trips SET plan_json = json_patch(COALESCE(plan_json, '{}'), ?), updated_at = ? WHERE id = ?",
+        { payload, now(), id })
     db:release()
     return e_err == nil, e_err
 end
@@ -156,17 +142,9 @@ end
 local function append_warning(id, message)
     local db, err = get_db()
     if err then return nil, err end
-    local rows, q_err = db:query("SELECT plan_json FROM trips WHERE id = ?", { id })
-    if q_err then db:release(); return nil, q_err end
-    if #rows == 0 then db:release(); return nil, "not_found" end
-
-    local plan = rows[1].plan_json and json.decode(rows[1].plan_json) or {}
-    plan.warnings = plan.warnings or {}
-    table.insert(plan.warnings, message)
-
     local _, e_err = db:execute(
-        "UPDATE trips SET plan_json = ?, updated_at = ? WHERE id = ?",
-        { json.encode(plan), now(), id })
+        [[UPDATE trips SET plan_json = json_set(COALESCE(plan_json, '{"warnings":[]}'), '$.warnings[#]', ?), updated_at = ? WHERE id = ?]],
+        { message, now(), id })
     db:release()
     return e_err == nil, e_err
 end
