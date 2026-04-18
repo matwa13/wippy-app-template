@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onUnmounted } from 'vue'
+import { ref, computed, onUnmounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { Icon } from '@iconify/vue'
 import { useQuery, useQueryClient } from '@tanstack/vue-query'
@@ -32,6 +32,10 @@ const { data: trips, isPending } = useQuery({
     return data.success ? (data.trips || []) as TripSummary[] : []
   },
   placeholderData: () => (tripsStore.list.length > 0 ? tripsStore.list : undefined),
+})
+
+watch(trips, (val) => {
+  if (val) tripsStore.list = val
 })
 
 const visible = computed(() => {
