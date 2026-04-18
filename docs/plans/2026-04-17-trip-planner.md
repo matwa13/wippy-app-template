@@ -5,7 +5,7 @@
 ## Progress
 
 **Branch:** `feature/trip-planner-subagent-driven-development`
-**Resume at:** Phase 3 (frontend) — Tasks 17-22. **Phase 2 complete.** Pause for user confirmation before starting Phase 3.
+**Resume at:** Phase 3 (frontend) — Tasks 18-22. Phases 1+2 complete, Tasks 15-17 complete (backend wrap-up). **Pause for user confirmation before starting Phase 3.**
 
 | Task | Status | Commit | Notes |
 |---|---|---|---|
@@ -27,7 +27,8 @@
 | 14. `trip_flow.lua` DAG assembly | ✅ | `1c6ac1f` + `b9a34c1` + `6ea2b08` | spec ✅ + quality ✅ (2 bugs caught & fixed in review loop: fan-out dead nodes → `b9a34c1`; discriminator wrapping → `6ea2b08`) |
 | 15. `trip_service` + wire HTTP POST | ✅ | `48ea74d` + `d4b883e` | spec ✅ + quality ✅; review caught latent canonicalization bug in the plan's snippet (`trip.destination or input.destination` always fell through to raw input because `trip_repo.create` returns only `{id,title,status}`) — fixed by canonicalizing once up front |
 | 16. `plan_trip` tool + `trips_trait` | ✅ | `a38b3cf` | spec ✅ + quality ✅ (only caveat = `trips` missing from NavigateTo enum, which is literally Task 17) |
-| 17-25 | ⬜ | | Task 17 = NavigateTo /trips wiring; Phase 3 (frontend) starts at Task 18 — pause for user |
+| 17. NavigateTo /trips wiring | ✅ | (next commit) | 3 trivial inline edits (PAGES map + enum + Wippy prompt); 21/21 tests still pass |
+| 18-25 | ⬜ | | Phase 3 (frontend Vue pages) — **paused for user** |
 
 **All trips tests:** 21/21 pass as of `be07b3f`.
 
