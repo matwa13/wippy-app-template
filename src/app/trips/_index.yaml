@@ -51,6 +51,14 @@ entries:
     imports:
       flow: userspace.dataflow.flow:flow
 
+  - name: trip_service
+    kind: library.lua
+    source: file://trip_service.lua
+    imports:
+      trip_repo: app.trips:trip_repo
+      trip_flow: app.trips:trip_flow
+      trips_common: app.trips:trips_common
+
   # --- HTTP handlers ---
   - name: list_trips
     kind: function.lua
@@ -80,8 +88,7 @@ entries:
       - json
       - security
     imports:
-      trip_repo: app.trips:trip_repo
-      trips_common: app.trips:trips_common
+      trip_service: app.trips:trip_service
     method: handler
     pool:
       size: 2

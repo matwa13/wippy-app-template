@@ -1,8 +1,7 @@
 local http = require("http")
 local json = require("json")
 local security = require("security")
-local trip_repo = require("trip_repo")
-local trips_common = require("trips_common")
+local trip_service = require("trip_service")
 
 local DATE_RE = "^%d%d%d%d%-%d%d%-%d%d$"
 
@@ -53,20 +52,15 @@ local function handler()
         return
     end
 
-    local trip, c_err = trip_repo.create(actor:id(), {
-        destination = trips_common.canonicalize_destination(data.destination),
-        origin      = data.origin and trips_common.canonicalize_destination(data.origin) or nil,
-        start_date  = data.start_date,
-        end_date    = data.end_date,
-    })
-    if c_err then
+    local result, s_err = trip_service.create_trip(actor:id(), data)
+    if s_err then
         res:set_status(http.STATUS.INTERNAL_ERROR)
-        res:write_json({ success = false, error = c_err })
+        res:write_json({ success = false, error = s_err })
         return
     end
 
     res:set_status(http.STATUS.CREATED)
-    res:write_json({ success = true, trip_id = trip.id, url = "/app/trips/" .. trip.id })
+    res:write_json({ success = true, trip_id = result.trip_id, url = result.url })
 end
 
 return { handler = handler }
