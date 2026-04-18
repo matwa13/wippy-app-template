@@ -45,6 +45,12 @@ entries:
     kind: library.lua
     source: file://trips_common.lua
 
+  - name: trip_flow
+    kind: library.lua
+    source: file://flow/trip_flow.lua
+    imports:
+      flow: userspace.dataflow.flow:flow
+
   # --- HTTP handlers ---
   - name: list_trips
     kind: function.lua
