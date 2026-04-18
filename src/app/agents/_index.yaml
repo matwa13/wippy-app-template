@@ -20,6 +20,7 @@ entries:
       - home: Home page
       - users: User management
       - tasks: Personal tasks
+      - trips: Trip planning
 
       If the user asks to see or open a specific page, use NavigateTo.
       Be concise and helpful.
@@ -149,7 +150,8 @@ entries:
               "enum": [
                 "home",
                 "users",
-                "tasks"
+                "tasks",
+                "trips"
               ]
             }
           },
