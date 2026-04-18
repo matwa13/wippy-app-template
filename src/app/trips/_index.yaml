@@ -140,6 +140,13 @@ entries:
     pool:
       size: 2
 
+  - name: validate_synthesizer_exit
+    kind: function.lua
+    source: file://flow/validate_synthesizer_exit.lua
+    method: handler
+    pool:
+      size: 2
+
   # --- Tests ---
   - name: trips_test
     kind: function.lua
@@ -184,3 +191,14 @@ entries:
     imports:
       test: wippy.test:test
       build_task_payloads: app.trips:build_task_payloads
+
+  - name: validate_synthesizer_exit_test
+    kind: function.lua
+    meta:
+      type: test
+      suite: trips
+    source: file://validate_synthesizer_exit_test.lua
+    method: run
+    imports:
+      test: wippy.test:test
+      validate_synthesizer_exit: app.trips:validate_synthesizer_exit
