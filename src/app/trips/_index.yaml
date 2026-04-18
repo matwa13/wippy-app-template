@@ -120,6 +120,16 @@ entries:
     pool:
       size: 2
 
+  - name: flights_linker
+    kind: function.lua
+    source: file://flow/flights_linker.lua
+    imports:
+      trip_repo: app.trips:trip_repo
+      trips_common: app.trips:trips_common
+    method: handler
+    pool:
+      size: 2
+
   # --- Tests ---
   - name: trips_test
     kind: function.lua
@@ -142,3 +152,14 @@ entries:
     imports:
       test: wippy.test:test
       normalize_input: app.trips:normalize_input
+
+  - name: flights_linker_test
+    kind: function.lua
+    meta:
+      type: test
+      suite: trips
+    source: file://flights_linker_test.lua
+    method: run
+    imports:
+      test: wippy.test:test
+      flights_linker: app.trips:flights_linker
