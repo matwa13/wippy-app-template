@@ -167,6 +167,18 @@ entries:
     pool:
       size: 2
 
+  - name: persist_tasks
+    kind: function.lua
+    source: file://flow/persist_tasks.lua
+    imports:
+      trip_repo: app.trips:trip_repo
+      trips_common: app.trips:trips_common
+      task_repo: app.tasks:task_repo
+      tasks_common: app.tasks:tools_common
+    method: handler
+    pool:
+      size: 2
+
   # --- Tests ---
   - name: trips_test
     kind: function.lua
