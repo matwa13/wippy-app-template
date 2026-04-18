@@ -5,7 +5,7 @@
 ## Progress
 
 **Branch:** `feature/trip-planner-subagent-driven-development`
-**Resume at:** Task 7 (Phase 2 — flow layer)
+**Resume at:** Phase 3 (frontend) — Tasks 17-22. **Phase 2 complete.** Pause for user confirmation before starting Phase 3.
 
 | Task | Status | Commit | Notes |
 |---|---|---|---|
@@ -16,12 +16,48 @@
 | 4. `GET /api/v1/trips` | ✅ | `0c44fd0` | |
 | 5. `POST /api/v1/trips` (row only) | ✅ | `d6ba739` | workflow kickoff deferred to Task 15 |
 | 6. `GET /api/v1/trips/:id` | ✅ | `0f2d913` | |
-| 7-25 | ⬜ | | next session |
+| 7. `normalize_input` func node | ✅ | `27608ac` | spec ✅ + quality ✅; also fixed 2 latent bugs in `trips_common.lua` |
+| 8. `flights_linker` func node | ✅ | `1fdef92` | spec ✅ + quality ✅ (with known deferred url_encode finding — see observations) |
+| 9. `build_task_payloads` | ✅ | `9bd6594` + `be07b3f` | spec ✅ + quality ✅ (findings plan-prescribed or stylistic; logged in observations) |
+| 10. `validate_synthesizer_exit` | ✅ | `3b0fb30` | spec ✅ + quality ✅ (findings plan-prescribed or against "no defensive coding" rule; logged in observations) |
+| 11. `save_attractions` + `save_packing` | ✅ | `dba418f` | spec ✅ + quality ✅ (no issues) |
+| 12. `persist_tasks` + `task_repo.create_with_trip` | ✅ | `df1ff66` | spec ✅ + quality ✅ (minor observations logged) |
+| 13. 4 workflow agents | ✅ | `b15963f` + `dd1c99d` | spec ✅ + quality ✅; `dd1c99d` adds explicit verbatim-name instruction to synthesizer prompt (validator does exact-match lookup) |
+| 2C.5 race + url_encode | ✅ | `891b58a` + `cb7b401` | `json_patch`/`json_set` collapse 3 helpers to single UPDATE (race eliminated); space → `%20` for path-segment URLs |
+| 14. `trip_flow.lua` DAG assembly | ✅ | `1c6ac1f` + `b9a34c1` + `6ea2b08` | spec ✅ + quality ✅ (2 bugs caught & fixed in review loop: fan-out dead nodes → `b9a34c1`; discriminator wrapping → `6ea2b08`) |
+| 15-25 | ⬜ | | Phase 3 next (frontend); pause for user |
+
+**All trips tests:** 21/21 pass as of `be07b3f`.
+
+**When you resume next session — do this first (literally the first thing before any new task):**
+
+1. Read this Progress section to confirm state.
+2. Phase 2 (backend + dataflow) is fully complete. Next up: Task 15 (HTTP kickoff that launches the workflow), then Task 16 (integration smoke test of the compiled DAG), then Phase 3 Tasks 17-22 (Vue pages for trip list / create / detail with hub-driven refresh).
+3. **Integration test note:** no end-to-end run of the compiled DAG has happened yet. Task 16 should exercise the full flow once before Phase 3 UI work — this is where the `error_to("@fail")` scope observation (below) will surface if it matters in practice.
 
 **Review observations to revisit (non-blocking, plan-prescribed code):**
-- `trip_repo.lua` — `update_node_state` / `update_plan_section` / `append_warning` do SELECT+UPDATE as two statements. Under the concurrent 3-sibling DAG branches in Task 14, two writes to the same trip could race and one update silently drop. Fix candidates: `json_set`/`json_patch` in a single UPDATE, or wrap in `BEGIN IMMEDIATE`. Decide before Task 14 if the race matters for correctness.
+- ~~`trip_repo.lua` — `update_node_state` / `update_plan_section` / `append_warning` do SELECT+UPDATE as two statements.~~ **Resolved in `891b58a` (Batch 2C.5):** all three helpers now use a single UPDATE via `json_patch` / `json_set`, which acquires an atomic write lock. Concurrent writes from Task 14's DAG branches serialize correctly.
 - `list_trips.lua` — filter value passes to SQL as a bound param without an allow-list. Typos like `?filter=Planning` produce empty results silently. Low severity.
 - `get_trip.lua` — `scheduled_at` is not type-coerced in `load_trip_tasks` (stays TEXT). Harmless today; watch if column type ever unifies with `created_at`.
+- ~~`flights_linker.lua` — `url_encode` converts space to `+` instead of `%20`.~~ **Resolved in `cb7b401` (Batch 2C.5):** space is now percent-encoded in path components. Multi-word cities produce correct URLs.
+- **Task 9 test 2 contradiction (resolved in `be07b3f`):** The plan as written had `test 2 = omits packing when packing is nil` with `itinerary = {}` expecting 1 row, which directly contradicted `test 3 = omits flights when itinerary is empty` with `itinerary = {}` expecting 0 rows. The plan's own implementation code (`if #itinerary == 0 then return rows end`) failed test 2. We corrected test 2's fixture to have a non-empty itinerary (the test's stated purpose is packing omission, which requires *some* rows to assert against) and reverted the implementation to the plan's intended single early-return. If you rebuild from the plan doc, remember this correction.
+- `build_task_payloads.lua:76` — `clamp_to_today(ctx.today, ctx.today)` is a no-op (always returns `ctx.today`). Plan-prescribed verbatim. Harmless redundancy; could simplify to `scheduled_at = ctx.today` if we ever revise the plan.
+- `validate_synthesizer_exit.lua:18` + `build_task_payloads.lua:13` — use lexicographic ISO-8601 string comparison for dates. Assumes upstream (`normalize_input` / LLM system prompts) always emits zero-padded `YYYY-MM-DD`. Malformed input (e.g. `"2026-5-1"`) would silently mis-order. Consistent with project rule "don't program defensively"; noted for future hardening only.
+- `validate_synthesizer_exit.lua:25-29` — density cap (≤2 items/day) only checked for `start_date` and `end_date`, not mid-trip dates. Plan-prescribed; the intent is that capacity constraints only apply to arrival/departure days (partial travel days).
+- Test 3 description in `build_task_payloads_test.lua:55` ("omits flights when itinerary is empty (no itinerary → no tasks except flights?)") is confusing — the `?` makes it read as a question. The assertion (`#rows == 0`) is correct and matches the implementation. Plan-prescribed wording; cosmetic only.
+- `task_repo.create_with_trip` returns a row shape that includes `trip_id` + `scheduled_at`, but `row_to_task` (used by `get`/`list`) does not expose these fields. `persist_tasks` discards the return value so no live breakage, but any future caller expecting `get()`/`list()` to include trip-linked fields will get stale data. Revisit when the frontend needs to surface `scheduled_at`/`trip_id` on task rows.
+- `persist_tasks.lua:32` has a plan-prescribed `-- Determine final status: ready or partial...` comment that explains WHAT, not WHY — against project style. Harmless; leave unless we touch that function.
+- `persist_tasks.lua:33-34` does a full `trip_repo.get` round-trip only to read one node's status. Could be replaced by passing `packing_failed` as a field on `input` from the DAG join. Plan-prescribed; revisit when Task 14 wires the DAG.
+- **Task 14 review loop — two bugs caught + fixed:** (a) fan-out from `normalize_input` initially relied on auto-chain, which only fires when a node has *no* explicit edges; the first `:to("attractions_research")` silenced auto-chain and left `packing_research` + `flights_linker` as dead nodes. Fixed in `b9a34c1` with three explicit `:to(sibling)` calls. (b) `:to(target)` without an `input_key` sets the edge discriminator to the *source node's name*, and the func-node runtime only unwraps `"default"`/empty discriminators — named ones deliver `{<source_name> = content}` to the handler. This would have broken 5 of the data-flow edges (fan-out × 3 + agent→persister × 2). Fixed in `6ea2b08` by adding explicit `"default"` input_key to those 5 edges. Join edges intentionally keep their named discriminators (`"attractions"`, `"packing"`, `"flights"`) because the join collects inputs keyed by name.
+- **Task 14 — `error_to("@fail")` scope (deferred; verify at Task 16 integration):** the single `:error_to("@fail")` at the end of the flow attaches only to `persist_tasks` (the node that was `last_node_id` at that point). Upstream node failures (e.g. `normalize_input`, agents, `flights_linker`, `save_*`, `build_task_payloads`) do not route explicitly; the scheduler terminates via a generic deadlock path rather than surfacing the node's actual error. Workflow still terminates — this is an observability gap, not a crash. If Task 16 shows misleading error payloads in the dashboard, add per-branch `:error_to("@fail")` calls.
+
+**Agreed batching (re-confirm with user on resume):**
+- Batch 2B = Tasks 11+12 (func nodes `save_attractions` + `save_packing` + `persist_tasks` — all touch `trip_repo` update helpers)
+- Batch 2C = Task 13 (4 workflow agents in `agents/_index.yaml`)
+- Batch 2C.5 = dedicated commit fixing the race condition + url_encode finding (prerequisite before Task 14's concurrent DAG)
+- Batch 2D = Task 14 (`trip_flow.lua` DAG assembly) ✅ — **paused for user** before Phase 3
+- Next: Tasks 15 (HTTP kickoff) + 16 (integration test) before Phase 3 frontend work
+- User prefers: implementer on Sonnet, spec reviewer on Sonnet, code quality via `feature-dev:code-reviewer` agent. Pause after each phase.
 
 **Goal:** Ship the Trip Planner feature from `docs/specs/trip-planner.md` — a dataflow workflow that turns destination + dates into an itinerary, packing list, flight links, and a structured set of tasks, exposed via both chat tool and web form.
 
