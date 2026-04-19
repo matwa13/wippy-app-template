@@ -5,7 +5,7 @@
 ## Progress
 
 **Branch:** `feature/trip-planner-subagent-driven-development`
-**Resume at:** Phase 3 (frontend) — Tasks 18-22. Phases 1+2 complete, Tasks 15-17 complete (backend wrap-up). **Pause for user confirmation before starting Phase 3.**
+**Resume at:** Tasks 23-24 (manual browser smoke tests — require user) then Task 25 (doc updates). Phase 3 frontend complete.
 
 | Task | Status | Commit | Notes |
 |---|---|---|---|
@@ -30,7 +30,8 @@
 | 17. NavigateTo /trips wiring | ✅ | `08c023f` | 3 trivial inline edits (PAGES map + enum + Wippy prompt); 21/21 tests still pass |
 | 18. Frontend Pinia store + types | ✅ | `624b476` | verbatim types + empty-state store matching `tasks.ts` pattern; build passes |
 | 19-21. Three Vue pages (list/create/detail) | ✅ | `e59ea15` + `0a88026` + `ea56559` + `bf3c52d` | spec ✅ + quality ✅; review caught missed store-sync `watch` in list page — fixed in `bf3c52d` |
-| 22-25 | ⬜ | | Task 22 = router + sidebar wiring; 23-24 = live smoke tests; 25 = doc updates |
+| 22. Router + sidebar wiring | ✅ | | three routes added, nav item with `activePrefix: 'trip'` so detail page highlights `/trips`; build passes |
+| 23-25 | ⬜ | | 23-24 = live browser smoke tests (need user); 25 = doc updates |
 
 **All trips tests:** 21/21 pass as of `be07b3f`.
 
