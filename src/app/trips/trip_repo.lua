@@ -149,6 +149,45 @@ local function append_warning(id, message)
     return e_err == nil, e_err
 end
 
+--- Hard-delete a trip and every task attached to it (transactional).
+-- Refuses to delete while the trip is still planning (workflow in flight).
+-- @return { tasks_deleted = N }, err
+local function delete(user_id, id)
+    local db, err = get_db()
+    if err then return nil, err end
+
+    -- Load under the same connection before opening the transaction so we can
+    -- give a clean "not_found" / "planning" error without a stray tx rollback.
+    local rows, q_err = db:query(
+        "SELECT status FROM trips WHERE user_id = ? AND id = ?", { user_id, id })
+    if q_err then db:release(); return nil, q_err end
+    if #rows == 0 then db:release(); return nil, "not_found" end
+    if rows[1].status == "planning" then
+        db:release()
+        return nil, "trip_in_progress"
+    end
+
+    local tx, t_err = db:begin()
+    if t_err then db:release(); return nil, t_err end
+
+    local del_tasks, dt_err = tx:execute(
+        "DELETE FROM tasks WHERE user_id = ? AND trip_id = ?", { user_id, id })
+    if dt_err then tx:rollback(); db:release(); return nil, dt_err end
+
+    local del_trip, dp_err = tx:execute(
+        "DELETE FROM trips WHERE user_id = ? AND id = ?", { user_id, id })
+    if dp_err then tx:rollback(); db:release(); return nil, dp_err end
+    if del_trip.rows_affected == 0 then
+        tx:rollback(); db:release(); return nil, "not_found"
+    end
+
+    local ok, c_err = tx:commit()
+    db:release()
+    if not ok then return nil, c_err end
+
+    return { tasks_deleted = del_tasks.rows_affected or 0 }
+end
+
 return {
     create = create,
     get = get,
@@ -158,4 +197,5 @@ return {
     update_node_state = update_node_state,
     update_plan_section = update_plan_section,
     append_warning = append_warning,
+    delete = delete,
 }

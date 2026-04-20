@@ -124,6 +124,28 @@ entries:
     func: get_trip
     path: /trips/{id}
 
+  - name: delete_trip
+    kind: function.lua
+    source: file://api/delete_trip.lua
+    modules:
+      - http
+      - security
+    imports:
+      trip_repo: app.trips:trip_repo
+      trips_common: app.trips:trips_common
+      tasks_common: app.tasks:tools_common
+    method: handler
+    pool:
+      size: 2
+
+  - name: delete_trip.endpoint
+    kind: http.endpoint
+    meta:
+      router: app:api
+    method: DELETE
+    func: delete_trip
+    path: /trips/{id}
+
   # --- Flow func nodes ---
   - name: normalize_input
     kind: function.lua
@@ -254,6 +276,8 @@ entries:
       suite: trips
     source: file://trip_repo_test.lua
     method: run
+    modules:
+      - sql
     imports:
       test: wippy.test:test
       trip_repo: app.trips:trip_repo

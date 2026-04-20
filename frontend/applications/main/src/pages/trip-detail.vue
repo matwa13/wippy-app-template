@@ -2,12 +2,13 @@
 import { computed, onUnmounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Icon } from '@iconify/vue'
-import { useQuery, useQueryClient } from '@tanstack/vue-query'
+import { useQuery, useQueryClient, useMutation } from '@tanstack/vue-query'
 import Button from 'primevue/button'
-import { useApi, useWippy } from '../composables/useWippy'
+import { useApi, useHost, useWippy } from '../composables/useWippy'
 import type { TripDetail, NodeState } from '../stores/trips'
 
 const api = useApi()
+const host = useHost()
 const wippy = useWippy()
 const route = useRoute()
 const router = useRouter()
@@ -63,6 +64,39 @@ function nodeIconClass(s: NodeState | undefined) {
 }
 
 const panelOpen = ref(true)
+
+const deleteMutation = useMutation({
+  mutationFn: async () => {
+    const { data } = await api.delete('/api/v1/trips/' + tripId.value)
+    if (!data.success) throw new Error(data.error || 'delete failed')
+    return data
+  },
+  onSuccess: (data) => {
+    queryClient.invalidateQueries({ queryKey: ['trips'] })
+    if ((data?.tasks_deleted ?? 0) > 0) {
+      queryClient.invalidateQueries({ queryKey: ['tasks'] })
+    }
+    host.toast({ severity: 'success', summary: 'Trip deleted' })
+    router.push('/trips')
+  },
+  onError: (err: Error) => {
+    host.toast({ severity: 'error', summary: 'Failed to delete trip', detail: err.message })
+  },
+})
+
+async function confirmDelete() {
+  if (!trip.value) return
+  const taskCount = trip.value.tasks?.length ?? 0
+  const msg = taskCount > 0
+    ? `Delete "${trip.value.title}" and its ${taskCount} task${taskCount === 1 ? '' : 's'}? This cannot be undone.`
+    : `Delete "${trip.value.title}"? This cannot be undone.`
+  const ok = await host.confirm({
+    message: msg,
+    header: 'Delete trip',
+    icon: 'tabler:trash',
+  })
+  if (ok) deleteMutation.mutate()
+}
 </script>
 
 <template>
@@ -102,6 +136,25 @@ const panelOpen = ref(true)
           'bg-surface-100 text-surface-600 dark:bg-surface-700 dark:text-surface-300': trip.status === 'planning',
         }"
       >{{ trip.status }}</span>
+      <Button
+        text
+        rounded
+        size="small"
+        severity="danger"
+        :aria-label="`Delete ${trip.title}`"
+        :disabled="trip.status === 'planning' || deleteMutation.isPending.value"
+        :title="trip.status === 'planning' ? 'Cannot delete while planning is in progress' : 'Delete trip'"
+        :loading="deleteMutation.isPending.value"
+        @click="confirmDelete"
+      >
+        <template #icon>
+          <Icon
+            icon="tabler:trash"
+            class="w-4 h-4"
+            aria-hidden="true"
+          />
+        </template>
+      </Button>
     </div>
 
     <div class="flex-1 overflow-y-auto px-5 py-4 space-y-4">
