@@ -12,6 +12,7 @@ local function handler(input)
         trip_repo.update_node_state(trip_id, "attractions_research",
             { status = "failed", ended_at = os.time(),
               error = "no attractions returned" })
+        trip_repo.set_status(trip_id, "failed")
         trips_common.notify(user_id, trip_id)
         return nil, "no attractions returned"
     end

@@ -76,19 +76,25 @@ local function build(ctx)
 
     -- Packing task (priority 2), only if non-empty
     if ctx.packing and #ctx.packing > 0 then
+        local date = clamp_to_today(minus_one_day(ctx.start_date), ctx.today)
         table.insert(rows, {
             title        = "Pack for " .. ctx.destination .. " trip",
-            scheduled_at = clamp_to_today(minus_one_day(ctx.start_date), ctx.today),
-            priority     = 2,
+            scheduled_at = date,
+            due_date     = date,
+            priority     = 3,
             notes        = packing_notes(ctx.packing),
         })
     end
 
-    -- One per itinerary item (priority 1)
+    -- One per itinerary item (priority 1). The itinerary date is effectively
+    -- a hard deadline (the trip ends), so mirror it into due_date so it shows
+    -- up on the /tasks page alongside other dated tasks.
     for _, item in ipairs(itinerary) do
+        local date = clamp_to_today(item.date, ctx.today)
         table.insert(rows, {
             title        = "Visit " .. item.attraction_name,
-            scheduled_at = clamp_to_today(item.date, ctx.today),
+            scheduled_at = date,
+            due_date     = date,
             priority     = 1,
             notes        = attraction_notes(item),
         })

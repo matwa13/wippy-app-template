@@ -12,6 +12,7 @@ local function handler(input)
         trip_repo.update_node_state(trip_id, "itinerary_synthesize",
             { status = "failed", ended_at = os.time(),
               error = "synthesizer returned empty itinerary" })
+        trip_repo.set_status(trip_id, "failed")
         trips_common.notify(user_id, trip_id)
         return nil, "empty itinerary"
     end

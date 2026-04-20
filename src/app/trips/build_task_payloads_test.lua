@@ -30,7 +30,11 @@ local function define_tests()
             test.eq(rows[2].priority, 2)
             test.eq(rows[3].title, "Visit Senso-ji")
             test.eq(rows[3].scheduled_at, "2026-05-02")
+            test.eq(rows[3].due_date, "2026-05-02")
             test.eq(rows[3].priority, 1)
+            -- flights/packing intentionally do not set due_date
+            test.eq(rows[1].due_date, nil)
+            test.eq(rows[2].due_date, nil)
         end)
 
         test.it("omits packing task when packing is nil or empty", function()

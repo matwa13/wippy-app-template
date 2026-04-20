@@ -210,6 +210,29 @@ async function confirmDelete() {
         </ul>
       </section>
 
+      <section
+        v-if="trip.plan_json?.flights"
+        class="flex gap-2"
+      >
+        <a
+          v-if="trip.plan_json.flights.skyscanner_url"
+          :href="trip.plan_json.flights.skyscanner_url"
+          target="_blank"
+          rel="noopener"
+        >
+          <Button
+            label="Skyscanner"
+            size="small"
+            severity="secondary"
+          >
+            <template #icon><Icon
+              icon="tabler:plane"
+              class="w-4 h-4"
+            /></template>
+          </Button>
+        </a>
+      </section>
+
       <section v-if="trip.plan_json?.attractions?.length">
         <h2 class="text-sm font-semibold mb-2 text-surface-900 dark:text-surface-0">
           Attractions
@@ -253,35 +276,6 @@ async function confirmDelete() {
               {{ i }}
             </li>
           </ul>
-        </div>
-      </section>
-
-      <section
-        v-if="trip.plan_json?.flights"
-        class="flex gap-2"
-      >
-        <a
-          v-if="trip.plan_json.flights.skyscanner_url"
-          :href="trip.plan_json.flights.skyscanner_url"
-          target="_blank"
-          rel="noopener"
-        >
-          <Button
-            label="Skyscanner"
-            size="small"
-            severity="secondary"
-          >
-            <template #icon><Icon
-              icon="tabler:plane"
-              class="w-4 h-4"
-            /></template>
-          </Button>
-        </a>
-        <div
-          v-else
-          class="text-xs text-surface-500 italic"
-        >
-          Flight search unavailable — see warnings above.
         </div>
       </section>
 

@@ -112,6 +112,9 @@ local function build_and_start(input)
         :to("save_itinerary_gate", "context")
         :to("build_task_payloads_gate", "context")
         :to("persist_tasks_gate", "context")
+        -- Synthesizer needs trip dates to schedule attractions; the central join
+        -- only carries agent outputs, so feed the normalized context directly.
+        :to("join", "context")
 
         :agent("app.agents:trip_attractions_researcher", {
             arena = {
@@ -174,7 +177,7 @@ local function build_and_start(input)
         :to("join", "flights")
 
         :join({
-            inputs = { required = { "attractions", "packing", "flights" } },
+            inputs = { required = { "attractions", "packing", "flights", "context" } },
             output_mode = "object",
         }):as("join")
         :to("itinerary_synthesize", "default")

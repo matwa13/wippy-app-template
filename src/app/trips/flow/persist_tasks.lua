@@ -17,6 +17,7 @@ local function handler(input)
         local _, c_err = task_repo.create_with_trip(user_id, trip_id, r.title, {
             notes = r.notes,
             scheduled_at = r.scheduled_at,
+            due_date = r.due_date,
             priority = r.priority,
         })
         if c_err then

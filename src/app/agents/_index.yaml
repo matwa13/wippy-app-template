@@ -29,10 +29,11 @@ entries:
     max_tokens: 8000
     traits:
       - id: userspace.user.traits:user_aware
+      - id: wippy.agent.traits:time_aware
       - id: app.agents:wippy_nav_trait
       - id: app.agents:wippy_artifacts_trait
       - id: app.tasks:tasks_trait
-      - id: app.trips:trips_trait
+      - id: app.agents:trips_trait
 
   - name: wippy_nav_trait
     kind: registry.entry
@@ -80,9 +81,10 @@ entries:
       - PlanTrip(destination, start_date, end_date, origin?) — start a trip planning workflow.
       If any required field is missing, ask the user conversationally before calling. Dates must
       be full ISO dates with year (yyyy-mm-dd). When the user mentions a date without a year,
-      use the current year — never guess a past year.
-      After calling PlanTrip successfully, reply with a short confirmation that includes the
-      returned url so the user can click through to the live trip page.
+      use the current year (provided in the prompt context by the time_aware trait) — never use
+      any earlier year.
+      After calling PlanTrip successfully, reply with a short confirmation and navigate to the /trips/<id> page where
+      user may check progress
     tools:
       - app.trips:plan_trip
 
@@ -238,12 +240,16 @@ entries:
       title: Trip Itinerary Synthesizer
       comment: Assigns attractions to days and time slots
     prompt: |
-      You plan daily itineraries. Select from the provided attractions list only (do NOT invent
-      new ones) and schedule each selection on a specific date within the trip range. Use the
-      attraction's `name` value verbatim as `attraction_name` — any paraphrase will be rejected.
-      The first date is arrival day (<= 2 items) and the last date is departure day (<= 2 items).
-      Prefer morning/afternoon/evening slots. When a critic_feedback is present in your input,
-      address each issue in your next output.
+      You plan daily itineraries. Your input is a JSON object with these keys:
+      - `attractions`: the candidate attractions list — select from this list only (do NOT invent new ones).
+      - `context`: trip metadata including `start_date`, `end_date`, `duration_days`, `destination`, `season`.
+      - `packing`, `flights`: ignore for itinerary planning.
+
+      Schedule each selected attraction on a specific date in the inclusive range
+      `context.start_date` … `context.end_date`. Use the attraction's `name` value verbatim
+      as `attraction_name` — any paraphrase will be rejected. The first date is arrival day
+      (<= 2 items) and the last date is departure day (<= 2 items). Prefer morning/afternoon/
+      evening slots. Always return at least one item per non-arrival/departure day.
 
       OUTPUT FORMAT: Reply with a single raw JSON object that validates against the exit_schema.
       Do NOT wrap it in ```json code fences. Do NOT add prose before or after. The entire
