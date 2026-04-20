@@ -8,6 +8,12 @@
       "summary": "API endpoints and documentation index for Wippy platform"
     },
     {
+      "path": "docs/reference/code-style-guide.md",
+      "title": "Code Style Guide",
+      "category": "reference",
+      "summary": "This document defines code style requirements for Lua and YAML files in DocBrief."
+    },
+    {
       "path": "frontend/docs/README.md",
       "title": "Wippy Frontend Development Guide",
       "category": "reference",
