@@ -27,11 +27,18 @@ instance.on('action:navigate', (data: any) => {
 const navItems = [
   { path: '/', name: 'home', label: 'Home', icon: 'tabler:home' },
   { path: '/tasks', name: 'tasks', label: 'Tasks', icon: 'tabler:checkbox' },
+  { path: '/trips', name: 'trips', label: 'Trips', icon: 'tabler:plane', activePrefix: 'trip' },
   { path: '/users', name: 'users', label: 'Users', icon: 'tabler:users' },
   { path: '/components', name: 'components', label: 'Components', icon: 'tabler:components' },
 ]
 
 const currentName = computed(() => route.name)
+
+function isActive(name: string, prefix?: string) {
+  if (currentName.value === name) return true
+  if (prefix) return String(currentName.value || '').startsWith(prefix)
+  return false
+}
 const currentUser = ref<{ email: string; full_name: string } | null>(null)
 const wippyToken = ref<string | null>(null)
 
@@ -121,11 +128,11 @@ onMounted(() => {
           class="w-full flex items-center rounded-lg text-sm transition-colors"
           :class="[
             collapsed ? 'justify-center px-0 py-2' : 'gap-2.5 px-3 py-2',
-            currentName === item.name
+            isActive(item.name, item.activePrefix)
               ? 'bg-primary/10 text-primary font-medium'
               : 'text-surface-500 hover:text-surface-700 dark:hover:text-surface-300 hover:bg-surface-100 dark:hover:bg-surface-800',
           ]"
-          :aria-current="currentName === item.name ? 'page' : undefined"
+          :aria-current="isActive(item.name, item.activePrefix) ? 'page' : undefined"
           :title="collapsed ? item.label : undefined"
           @click="navigate(item.path)"
         >

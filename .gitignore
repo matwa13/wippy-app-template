@@ -9,6 +9,8 @@ wippy.exe
 CLAUDE.md
 .idea
 .claude
+.agents
+skills-lock.json
 
 .playwright-mcp/
 

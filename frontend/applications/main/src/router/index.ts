@@ -29,6 +29,21 @@ const routes = [
     component: () => import('../pages/components.vue'),
   },
   {
+    path: '/trips',
+    name: 'trips',
+    component: () => import('../pages/trips-list.vue'),
+  },
+  {
+    path: '/trips/create',
+    name: 'trips-create',
+    component: () => import('../pages/trips-create.vue'),
+  },
+  {
+    path: '/trips/:id',
+    name: 'trip-detail',
+    component: () => import('../pages/trip-detail.vue'),
+  },
+  {
     path: '/:pathMatch(.*)*',
     name: 'not-found',
     redirect: '/',

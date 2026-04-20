@@ -102,11 +102,11 @@ local function update(user_id, id, fields)
     end
     if fields.notes ~= nil then
         table.insert(sets, "notes = ?")
-        table.insert(args, fields.notes ~= "" and fields.notes or nil)
+        table.insert(args, fields.notes ~= "" and fields.notes or sql.NULL)
     end
     if fields.due_date ~= nil then
         table.insert(sets, "due_date = ?")
-        table.insert(args, fields.due_date ~= "" and fields.due_date or nil)
+        table.insert(args, fields.due_date ~= "" and fields.due_date or sql.NULL)
     end
     if fields.priority ~= nil then
         table.insert(sets, "priority = ?")
@@ -174,6 +174,33 @@ local function find_by_title(user_id, query, only_open)
     return nil, "not_found"
 end
 
+local function create_with_trip(user_id, trip_id, title, opts)
+    if not title or title == "" then return nil, "title is required" end
+    opts = opts or {}
+
+    local db, err = get_db()
+    if err then return nil, err end
+
+    local id = uuid.v7()
+    local ts = now()
+    local priority = opts.priority or 2
+    local _, e_err = db:execute([[
+        INSERT INTO tasks (id, user_id, title, done, notes, due_date, scheduled_at,
+                           priority, trip_id, created_at, updated_at)
+        VALUES (?, ?, ?, 0, ?, ?, ?, ?, ?, ?, ?)
+    ]], { id, user_id, title, opts.notes, opts.due_date, opts.scheduled_at,
+          priority, trip_id, ts, ts })
+    db:release()
+    if e_err then return nil, e_err end
+
+    return {
+        id = id, title = title, done = false,
+        notes = opts.notes, due_date = opts.due_date,
+        scheduled_at = opts.scheduled_at, priority = priority,
+        trip_id = trip_id, created_at = ts, updated_at = ts,
+    }
+end
+
 return {
     list = list,
     get = get,
@@ -181,4 +208,5 @@ return {
     update = update,
     delete = delete,
     find_by_title = find_by_title,
+    create_with_trip = create_with_trip,
 }

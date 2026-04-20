@@ -6,6 +6,7 @@ local PAGES: {[string]: string} = {
     home = "/",
     users = "/users",
     tasks = "/tasks",
+    trips = "/trips",
 }
 
 local function handler(params)

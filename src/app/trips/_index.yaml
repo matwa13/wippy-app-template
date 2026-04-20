@@ -1,0 +1,338 @@
+version: "1.0"
+namespace: app.trips
+
+entries:
+  # --- Migrations ---
+  - name: 01_init
+    kind: function.lua
+    meta:
+      type: migration
+      target_db: app:db
+      description: Create trips table
+      depends_on:
+        - ns:wippy.migration
+      timestamp: "2026-04-17T00:00:00Z"
+    source: file://migrations/01_init.lua
+    imports:
+      migration: wippy.migration:migration
+    method: migrate
+
+  - name: 02_tasks_fields
+    kind: function.lua
+    meta:
+      type: migration
+      target_db: app:db
+      description: Add trip_id and scheduled_at to tasks
+      depends_on:
+        - ns:wippy.migration
+        - ns:app.tasks
+      timestamp: "2026-04-17T00:00:01Z"
+    source: file://migrations/02_tasks_fields.lua
+    imports:
+      migration: wippy.migration:migration
+    method: migrate
+
+  # --- Shared libs ---
+  - name: trip_repo
+    kind: library.lua
+    source: file://trip_repo.lua
+    modules:
+      - sql
+      - uuid
+      - json
+
+  - name: trips_common
+    kind: library.lua
+    source: file://trips_common.lua
+    modules:
+      - json
+
+  - name: trip_flow
+    kind: library.lua
+    source: file://flow/trip_flow.lua
+    imports:
+      flow: userspace.dataflow.flow:flow
+
+  - name: trip_service
+    kind: library.lua
+    source: file://trip_service.lua
+    imports:
+      trip_repo: app.trips:trip_repo
+      trip_flow: app.trips:trip_flow
+      trips_common: app.trips:trips_common
+
+  # --- HTTP handlers ---
+  - name: list_trips
+    kind: function.lua
+    source: file://api/list_trips.lua
+    modules:
+      - http
+      - security
+    imports:
+      trip_repo: app.trips:trip_repo
+    method: handler
+    pool:
+      size: 2
+
+  - name: list_trips.endpoint
+    kind: http.endpoint
+    meta:
+      router: app:api
+    method: GET
+    func: list_trips
+    path: /trips
+
+  - name: create_trip
+    kind: function.lua
+    source: file://api/create_trip.lua
+    modules:
+      - http
+      - json
+      - security
+    imports:
+      trip_service: app.trips:trip_service
+    method: handler
+    pool:
+      size: 2
+
+  - name: create_trip.endpoint
+    kind: http.endpoint
+    meta:
+      router: app:api
+    method: POST
+    func: create_trip
+    path: /trips
+
+  - name: get_trip
+    kind: function.lua
+    source: file://api/get_trip.lua
+    modules:
+      - http
+      - security
+      - sql
+    imports:
+      trip_repo: app.trips:trip_repo
+    method: handler
+    pool:
+      size: 2
+
+  - name: get_trip.endpoint
+    kind: http.endpoint
+    meta:
+      router: app:api
+    method: GET
+    func: get_trip
+    path: /trips/{id}
+
+  - name: delete_trip
+    kind: function.lua
+    source: file://api/delete_trip.lua
+    modules:
+      - http
+      - security
+    imports:
+      trip_repo: app.trips:trip_repo
+      trips_common: app.trips:trips_common
+      tasks_common: app.tasks:tools_common
+    method: handler
+    pool:
+      size: 2
+
+  - name: delete_trip.endpoint
+    kind: http.endpoint
+    meta:
+      router: app:api
+    method: DELETE
+    func: delete_trip
+    path: /trips/{id}
+
+  # --- Flow func nodes ---
+  - name: normalize_input
+    kind: function.lua
+    source: file://flow/normalize_input.lua
+    imports:
+      trip_repo: app.trips:trip_repo
+      trips_common: app.trips:trips_common
+    method: handler
+    pool:
+      size: 2
+
+  - name: save_iata_resolver
+    kind: function.lua
+    source: file://flow/save_iata_resolver.lua
+    imports:
+      trip_repo: app.trips:trip_repo
+      trips_common: app.trips:trips_common
+    method: handler
+    pool:
+      size: 2
+
+  - name: flights_linker
+    kind: function.lua
+    source: file://flow/flights_linker.lua
+    imports:
+      trip_repo: app.trips:trip_repo
+      trips_common: app.trips:trips_common
+    method: handler
+    pool:
+      size: 2
+
+  - name: build_task_payloads
+    kind: function.lua
+    source: file://flow/build_task_payloads.lua
+    imports:
+      trip_repo: app.trips:trip_repo
+      trips_common: app.trips:trips_common
+    method: handler
+    pool:
+      size: 2
+
+  - name: save_attractions
+    kind: function.lua
+    source: file://flow/save_attractions.lua
+    imports:
+      trip_repo: app.trips:trip_repo
+      trips_common: app.trips:trips_common
+    method: handler
+    pool:
+      size: 2
+
+  - name: save_packing
+    kind: function.lua
+    source: file://flow/save_packing.lua
+    imports:
+      trip_repo: app.trips:trip_repo
+      trips_common: app.trips:trips_common
+    method: handler
+    pool:
+      size: 2
+
+  - name: save_itinerary
+    kind: function.lua
+    source: file://flow/save_itinerary.lua
+    imports:
+      trip_repo: app.trips:trip_repo
+      trips_common: app.trips:trips_common
+    method: handler
+    pool:
+      size: 2
+
+  - name: persist_tasks
+    kind: function.lua
+    source: file://flow/persist_tasks.lua
+    imports:
+      trip_repo: app.trips:trip_repo
+      trips_common: app.trips:trips_common
+      task_repo: app.tasks:task_repo
+      tasks_common: app.tasks:tools_common
+    method: handler
+    pool:
+      size: 2
+
+  # --- Startup recovery ---
+  - name: resume_planning
+    kind: process.lua
+    meta:
+      comment: Startup function that respawns dataflow orchestrators for planning trips
+    source: file://resume_planning.lua
+    imports:
+      df_client: userspace.dataflow:client
+    method: run
+    modules:
+      - sql
+      - logger
+
+  - name: resume_planning.service
+    kind: process.service
+    meta:
+      comment: Resume in-flight trip workflows after server restart
+    host: app:processes
+    lifecycle:
+      auto_start: true
+      restart:
+        initial_delay: 1s
+      security:
+        actor:
+          id: system.trip_resume
+        groups:
+          - wippy.security:process
+    process: resume_planning
+
+  # --- Agent tools ---
+  - name: plan_trip
+    kind: function.lua
+    meta:
+      type: tool
+      title: Plan Trip
+      input_schema: |
+        {
+          "type": "object",
+          "properties": {
+            "destination": { "type": "string", "description": "City/region name" },
+            "origin":      { "type": "string", "description": "Departure city (optional)" },
+            "start_date":  { "type": "string", "description": "yyyy-mm-dd" },
+            "end_date":    { "type": "string", "description": "yyyy-mm-dd" }
+          },
+          "required": ["destination", "start_date", "end_date"],
+          "additionalProperties": false
+        }
+      llm_alias: PlanTrip
+      llm_description: |
+        Kick off a trip-planning workflow. Creates a trip row, starts the research/itinerary
+        workflow, and returns {trip_id, url}. Require destination, start_date, end_date. Ask the
+        user for any missing field before calling — never guess dates.
+    source: file://tools/plan_trip.lua
+    modules:
+      - ctx
+    imports:
+      trip_service: app.trips:trip_service
+    method: handler
+    pool:
+      size: 2
+
+  # --- Tests ---
+  - name: trips_test
+    kind: function.lua
+    meta:
+      type: test
+      suite: trips
+    source: file://trip_repo_test.lua
+    method: run
+    modules:
+      - sql
+    imports:
+      test: wippy.test:test
+      trip_repo: app.trips:trip_repo
+
+  - name: normalize_input_test
+    kind: function.lua
+    meta:
+      type: test
+      suite: trips
+    source: file://normalize_input_test.lua
+    method: run
+    imports:
+      test: wippy.test:test
+      normalize_input: app.trips:normalize_input
+
+  - name: flights_linker_test
+    kind: function.lua
+    meta:
+      type: test
+      suite: trips
+    source: file://flights_linker_test.lua
+    method: run
+    imports:
+      test: wippy.test:test
+      flights_linker: app.trips:flights_linker
+
+  - name: build_task_payloads_test
+    kind: function.lua
+    meta:
+      type: test
+      suite: trips
+    source: file://build_task_payloads_test.lua
+    method: run
+    imports:
+      test: wippy.test:test
+      build_task_payloads: app.trips:build_task_payloads
