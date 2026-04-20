@@ -17,7 +17,7 @@ local function handler()
 
     local entries, err = registry.find({
         [".kind"] = "registry.entry",
-        ["meta.type"] = AGENT_TYPE
+        ["meta.type"] = AGENT_TYPE,
     })
 
     if err then
@@ -64,20 +64,20 @@ local function handler()
             order = entry.meta.order or DEFAULT_ORDER,
             icon = entry.meta.icon or "",
             class = entry.meta.class or {},
-            model = model
+            model = model,
         }
 
         local token, token_err = start_tokens.pack({
             agent = entry.id or "",
             model = model,
-            kind = kind
+            kind = kind,
         })
 
         if not token then
             res:set_status(http.STATUS.INTERNAL_ERROR)
             res:write_json({
                 success = false,
-                error = "Failed to generate start token for " .. (agent.name or "unknown") .. ": " .. (token_err or "unknown error")
+                error = "Failed to generate start token for " .. (agent.name or "unknown") .. ": " .. (token_err or "unknown error"),
             })
             return
         end
@@ -105,7 +105,7 @@ local function handler()
                     name = group_name,
                     title = group_name,
                     order = DEFAULT_ORDER,
-                    agents = {}
+                    agents = {},
                 }
                 table.insert(groups, group_map[group_name])
             end
@@ -126,10 +126,8 @@ local function handler()
         success = true,
         count = #agents,
         agents = agents,
-        grouped = groups
+        grouped = groups,
     })
 end
 
-return {
-    handler = handler
-}
+return { handler = handler }

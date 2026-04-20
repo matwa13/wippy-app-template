@@ -74,7 +74,7 @@ local function build(ctx)
         notes        = flights_notes(ctx.skyscanner_url),
     })
 
-    -- Packing task (priority 2), only if non-empty
+    -- Packing task (priority 3), only if non-empty
     if ctx.packing and #ctx.packing > 0 then
         local date = clamp_to_today(minus_one_day(ctx.start_date), ctx.today)
         table.insert(rows, {

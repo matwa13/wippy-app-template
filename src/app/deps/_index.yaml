@@ -2,174 +2,174 @@ version: "1.0"
 namespace: app.deps
 
 entries:
-  - name: users
-    kind: ns.dependency
-    component: userspace/users
-    version: '>=v0.1.0'
-    parameters:
-      - name: env_storage
-        value: app.env:store
-      - name: public_router
-        value: app:api.public
-      - name: router
-        value: app:api
+    - name: users
+      kind: ns.dependency
+      component: userspace/users
+      version: '>=v0.1.0'
+      parameters:
+          - name: env_storage
+            value: app.env:store
+          - name: public_router
+            value: app:api.public
+          - name: router
+            value: app:api
 
-  - name: uploads
-    kind: ns.dependency
-    component: userspace/uploads
-    version: '>=v0.4.0'
-    parameters:
-      - name: database_resource
-        value: app:db
-      - name: env_storage
-        value: app.env:store
-      - name: router
-        value: app:api
+    - name: uploads
+      kind: ns.dependency
+      component: userspace/uploads
+      version: '>=v0.4.0'
+      parameters:
+          - name: database_resource
+            value: app:db
+          - name: env_storage
+            value: app.env:store
+          - name: router
+            value: app:api
 
-  - name: bootloader
-    kind: ns.dependency
-    component: wippy/bootloader
-    version: '>=v0.0.9'
-    parameters:
-      - name: application_host
-        value: app:processes
-      - name: app_db
-        value: app:db
-      - name: env_storage
-        value: app.env:store
+    - name: bootloader
+      kind: ns.dependency
+      component: wippy/bootloader
+      version: '>=v0.0.9'
+      parameters:
+          - name: application_host
+            value: app:processes
+          - name: app_db
+            value: app:db
+          - name: env_storage
+            value: app.env:store
 
-  - name: migration
-    kind: ns.dependency
-    component: wippy/migration
-    version: '>=v0.0.7'
-    parameters:
-      - name: app_db
-        value: app:db
+    - name: migration
+      kind: ns.dependency
+      component: wippy/migration
+      version: '>=v0.0.7'
+      parameters:
+          - name: app_db
+            value: app:db
 
-  - name: llm
-    kind: ns.dependency
-    component: wippy/llm
-    version: '>=v0.2.10'
-    parameters:
-      - name: process_host
-        value: app:processes
-      - name: env_storage
-        value: app.env:store
+    - name: llm
+      kind: ns.dependency
+      component: wippy/llm
+      version: '>=v0.2.10'
+      parameters:
+          - name: process_host
+            value: app:processes
+          - name: env_storage
+            value: app.env:store
 
-  - name: agent
-    kind: ns.dependency
-    component: wippy/agent
-    version: '>=v0.2.1'
+    - name: agent
+      kind: ns.dependency
+      component: wippy/agent
+      version: '>=v0.2.1'
 
-  - name: relay
-    kind: ns.dependency
-    component: wippy/relay
-    version: '>=v0.2.1'
-    parameters:
-      - name: user_security_scope
-        value: app.security:user
-      - name: env_storage
-        value: app.env:store
-      - name: application_host
-        value: app:processes
-      - name: max_connections_per_user
-        value: "12"
-      - name: queue_multiplier
-        value: "100"
-      - name: user_hub_inactivity_timeout
-        value: 7200s
+    - name: relay
+      kind: ns.dependency
+      component: wippy/relay
+      version: '>=v0.2.1'
+      parameters:
+          - name: user_security_scope
+            value: app.security:user
+          - name: env_storage
+            value: app.env:store
+          - name: application_host
+            value: app:processes
+          - name: max_connections_per_user
+            value: "12"
+          - name: queue_multiplier
+            value: "100"
+          - name: user_hub_inactivity_timeout
+            value: 7200s
 
-  - name: session
-    kind: ns.dependency
-    component: wippy/session
-    version: '>=v0.1.0'
-    parameters:
-      - name: api_router
-        value: app:api
-      - name: database_resource
-        value: app:db
-      - name: default_host
-        value: app:processes
-      - name: env_storage
-        value: app.env:store
-      - name: delegation_func_id
-        value: userspace.dataflow.session:delegate
-      - name: token_checkpoint_threshold
-        value: "32000"
-      - name: max_message_limit
-        value: "500"
-      - name: gc_interval
-        value: 300s
+    - name: session
+      kind: ns.dependency
+      component: wippy/session
+      version: '>=v0.1.0'
+      parameters:
+          - name: api_router
+            value: app:api
+          - name: database_resource
+            value: app:db
+          - name: default_host
+            value: app:processes
+          - name: env_storage
+            value: app.env:store
+          - name: delegation_func_id
+            value: userspace.dataflow.session:delegate
+          - name: token_checkpoint_threshold
+            value: "32000"
+          - name: max_message_limit
+            value: "500"
+          - name: gc_interval
+            value: 300s
 
-  - name: terminal
-    kind: ns.dependency
-    component: wippy/terminal
-    version: '>=v0.0.7'
+    - name: terminal
+      kind: ns.dependency
+      component: wippy/terminal
+      version: '>=v0.0.7'
 
-  - name: test
-    kind: ns.dependency
-    component: wippy/test
-    version: '>=v0.0.8'
+    - name: test
+      kind: ns.dependency
+      component: wippy/test
+      version: '>=v0.0.8'
 
-  - name: views
-    kind: ns.dependency
-    component: wippy/views
-    version: '>=v0.0.13'
-    parameters:
-      - name: api_router
-        value: app:api.public
-      - name: env_storage
-        value: app.env:store
+    - name: views
+      kind: ns.dependency
+      component: wippy/views
+      version: '>=v0.0.13'
+      parameters:
+          - name: api_router
+            value: app:api.public
+          - name: env_storage
+            value: app.env:store
 
-  - name: security
-    kind: ns.dependency
-    component: wippy/security
-    version: '>=v0.0.7'
+    - name: security
+      kind: ns.dependency
+      component: wippy/security
+      version: '>=v0.0.7'
 
-  - name: usage
-    kind: ns.dependency
-    component: wippy/usage
-    version: '>=v0.2.1'
-    parameters:
-      - name: target_db
-        value: app:db
+    - name: usage
+      kind: ns.dependency
+      component: wippy/usage
+      version: '>=v0.2.1'
+      parameters:
+          - name: target_db
+            value: app:db
 
-  - name: dataflow
-    kind: ns.dependency
-    component: wippy/dataflow
-    version: '>=v0.1.0'
-    parameters:
-      - name: target_db
-        value: app:db
+    - name: dataflow
+      kind: ns.dependency
+      component: wippy/dataflow
+      version: '>=v0.1.0'
+      parameters:
+          - name: target_db
+            value: app:db
 
-  - name: facade
-    kind: ns.dependency
-    component: wippy/facade
-    version: '>=v0.5.37'
-    parameters:
-      - name: server
-        value: app:gateway
-      - name: router
-        value: app:api.public
-      - name: app_title
-        value: Wippy App
-      - name: app_name
-        value: Wippy App
-      - name: app_icon
-        value: "wippy:logo"
-      - name: show_admin
-        value: "false"
-      - name: hide_nav_bar
-        value: "true"
-      - name: login_path
-        value: /app/login.html
-      - name: session_type
-        value: non-persistent
-      - name: history_mode
-        value: browser
-      - name: custom_css
-        value: "@import url('https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap'); body { font-family: 'Poppins', sans-serif; }"
-      - name: css_variables
-        value: '{"--p-primary":"#6366f1"}'
-      - name: host_custom_css
-        value: ".wippy-host-app .chat-container { background-color: var(--p-surface-100); } @media (prefers-color-scheme: dark) { .wippy-host-app .chat-container { background-color: var(--p-surface-800); } }"
+    - name: facade
+      kind: ns.dependency
+      component: wippy/facade
+      version: '>=v0.5.37'
+      parameters:
+          - name: server
+            value: app:gateway
+          - name: router
+            value: app:api.public
+          - name: app_title
+            value: Wippy App
+          - name: app_name
+            value: Wippy App
+          - name: app_icon
+            value: "wippy:logo"
+          - name: show_admin
+            value: "false"
+          - name: hide_nav_bar
+            value: "true"
+          - name: login_path
+            value: /app/login.html
+          - name: session_type
+            value: non-persistent
+          - name: history_mode
+            value: browser
+          - name: custom_css
+            value: "@import url('https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap'); body { font-family: 'Poppins', sans-serif; }"
+          - name: css_variables
+            value: '{"--p-primary":"#6366f1"}'
+          - name: host_custom_css
+            value: ".wippy-host-app .chat-container { background-color: var(--p-surface-100); } @media (prefers-color-scheme: dark) { .wippy-host-app .chat-container { background-color: var(--p-surface-800); } }"

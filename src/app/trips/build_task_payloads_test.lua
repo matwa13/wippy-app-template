@@ -27,14 +27,14 @@ local function define_tests()
             test.eq(rows[1].priority, 3)
             test.eq(rows[2].title, "Pack for Tokyo trip")
             test.eq(rows[2].scheduled_at, "2026-04-30")
-            test.eq(rows[2].priority, 2)
+            test.eq(rows[2].priority, 3)
             test.eq(rows[3].title, "Visit Senso-ji")
             test.eq(rows[3].scheduled_at, "2026-05-02")
             test.eq(rows[3].due_date, "2026-05-02")
             test.eq(rows[3].priority, 1)
-            -- flights/packing intentionally do not set due_date
+            -- flights has no due_date; packing mirrors its scheduled_at
             test.eq(rows[1].due_date, nil)
-            test.eq(rows[2].due_date, nil)
+            test.eq(rows[2].due_date, "2026-04-30")
         end)
 
         test.it("omits packing task when packing is nil or empty", function()

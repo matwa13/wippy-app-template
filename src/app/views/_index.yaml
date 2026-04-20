@@ -2,245 +2,245 @@ version: "1.0"
 namespace: app.views
 
 entries:
-  - name: main
-    kind: registry.entry
-    meta:
-      type: view.page
-      name: main
-      title: Admin Panel
-      icon: tabler:layout-dashboard
-      order: 0
-      announced: true
-      secure: false
-      url: /app
-      base_path: app/main
-      entry_point: app.html
-      # config_overrides: Per-page AppConfig overrides. Injected into child iframe
-      # as window.__WIPPY_CONFIG_OVERRIDES__ before proxy.js loads.
-      # cssVariables/customCSS replace (not merge), iconSets merge additively.
-      # Example: override primary color to red for this page only:
-      # config_overrides:
-      #   customization:
-      #     cssVariables:
-      #       "--p-primary": "#ef4444"
-    proxy:
-      enabled: true
-      css:
-        fonts: true
-        theme_config: true
-        iframe: true
-        prime_vue: true
-        custom_css: true
-        custom_variables: true
-      tailwind_config: true
-      iconify_icons: true
+    - name: main
+      kind: registry.entry
+      meta:
+          type: view.page
+          name: main
+          title: Admin Panel
+          icon: tabler:layout-dashboard
+          order: 0
+          announced: true
+          secure: false
+          url: /app
+          base_path: app/main
+          entry_point: app.html
+          # config_overrides: Per-page AppConfig overrides. Injected into child iframe
+          # as window.__WIPPY_CONFIG_OVERRIDES__ before proxy.js loads.
+          # cssVariables/customCSS replace (not merge), iconSets merge additively.
+          # Example: override primary color to red for this page only:
+          # config_overrides:
+          #   customization:
+          #     cssVariables:
+          #       "--p-primary": "#ef4444"
+      proxy:
+          enabled: true
+          css:
+              fonts: true
+              theme_config: true
+              iframe: true
+              prime_vue: true
+              custom_css: true
+              custom_variables: true
+          tailwind_config: true
+          iconify_icons: true
 
-  - name: reaction-bar
-    kind: registry.entry
-    meta:
-      type: view.component
-      name: reaction-bar
-      title: Reaction Bar
-      tag_name: example-reaction-bar
-      entry_point: index.js
-      announced: true
-      secure: false
-      auto_register: true
-      url: /app/wc/reaction-bar
-      props:
-        type: object
-        properties:
-          reactions:
-            type: array
-            items:
-              type: string
-            default: ["👍", "👎", "❤️", "🎉", "🤔"]
-            description: Array of emoji reactions to display
-          allow-multiple:
-            type: boolean
-            default: false
-            description: Whether multiple reactions can be active simultaneously
-      events:
-        type: object
-        properties:
-          reaction:
-            type: object
-            properties:
-              emoji:
-                type: string
-              count:
-                type: number
-              active:
-                type: boolean
-            description: Fired when a reaction is toggled
+    - name: reaction-bar
+      kind: registry.entry
+      meta:
+          type: view.component
+          name: reaction-bar
+          title: Reaction Bar
+          tag_name: example-reaction-bar
+          entry_point: index.js
+          announced: true
+          secure: false
+          auto_register: true
+          url: /app/wc/reaction-bar
+          props:
+              type: object
+              properties:
+                  reactions:
+                      type: array
+                      items:
+                          type: string
+                      default: ["👍", "👎", "❤️", "🎉", "🤔"]
+                      description: Array of emoji reactions to display
+                  allow-multiple:
+                      type: boolean
+                      default: false
+                      description: Whether multiple reactions can be active simultaneously
+          events:
+              type: object
+              properties:
+                  reaction:
+                      type: object
+                      properties:
+                          emoji:
+                              type: string
+                          count:
+                              type: number
+                          active:
+                              type: boolean
+                      description: Fired when a reaction is toggled
 
-  - name: websocket-log
-    kind: registry.entry
-    meta:
-      type: view.component
-      name: websocket-log
-      title: WebSocket Log
-      tag_name: example-websocket-log
-      entry_point: index.js
-      announced: true
-      secure: false
-      auto_register: true
-      url: /app/wc/websocket-log
-      props:
-        type: object
-        properties:
-          topics:
-            type: array
-            items:
-              type: string
-            default: ["@message"]
-            description: Array of WebSocket topics to subscribe to
-          max-entries:
-            type: number
-            default: 100
-            description: Maximum number of log entries to keep
+    - name: websocket-log
+      kind: registry.entry
+      meta:
+          type: view.component
+          name: websocket-log
+          title: WebSocket Log
+          tag_name: example-websocket-log
+          entry_point: index.js
+          announced: true
+          secure: false
+          auto_register: true
+          url: /app/wc/websocket-log
+          props:
+              type: object
+              properties:
+                  topics:
+                      type: array
+                      items:
+                          type: string
+                      default: ["@message"]
+                      description: Array of WebSocket topics to subscribe to
+                  max-entries:
+                      type: number
+                      default: 100
+                      description: Maximum number of log entries to keep
 
-  - name: chart-circle
-    kind: registry.entry
-    meta:
-      type: view.component
-      name: chart-circle
-      title: Chart Circle
-      tag_name: example-chart-circle
-      entry_point: index.js
-      announced: true
-      secure: false
-      auto_register: true
-      url: /app/wc/chart-circle
-      props:
-        type: object
-        properties:
-          labels:
-            type: array
-            items:
-              type: string
-            default: ["Red", "Blue", "Yellow"]
-            description: Labels for chart segments
-          values:
-            type: array
-            items:
-              type: number
-            default: [300, 50, 100]
-            description: Values for chart segments
-          title:
-            type: string
-            default: "Sample Chart"
-            description: Chart title
+    - name: chart-circle
+      kind: registry.entry
+      meta:
+          type: view.component
+          name: chart-circle
+          title: Chart Circle
+          tag_name: example-chart-circle
+          entry_point: index.js
+          announced: true
+          secure: false
+          auto_register: true
+          url: /app/wc/chart-circle
+          props:
+              type: object
+              properties:
+                  labels:
+                      type: array
+                      items:
+                          type: string
+                      default: ["Red", "Blue", "Yellow"]
+                      description: Labels for chart segments
+                  values:
+                      type: array
+                      items:
+                          type: number
+                      default: [300, 50, 100]
+                      description: Values for chart segments
+                  title:
+                      type: string
+                      default: "Sample Chart"
+                      description: Chart title
 
-  - name: mermaid
-    kind: registry.entry
-    meta:
-      type: view.component
-      name: mermaid
-      title: Mermaid Diagram
-      tag_name: example-mermaid
-      entry_point: index.js
-      announced: true
-      secure: false
-      auto_register: true
-      url: /app/wc/mermaid
-      props:
-        type: object
-        properties:
-          definition:
-            type: string
-            default: ""
-            description: Mermaid diagram definition string
-          transparent:
-            type: boolean
-            default: true
-            description: Whether the diagram background is transparent
+    - name: mermaid
+      kind: registry.entry
+      meta:
+          type: view.component
+          name: mermaid
+          title: Mermaid Diagram
+          tag_name: example-mermaid
+          entry_point: index.js
+          announced: true
+          secure: false
+          auto_register: true
+          url: /app/wc/mermaid
+          props:
+              type: object
+              properties:
+                  definition:
+                      type: string
+                      default: ""
+                      description: Mermaid diagram definition string
+                  transparent:
+                      type: boolean
+                      default: true
+                      description: Whether the diagram background is transparent
 
-  - name: markdown
-    kind: registry.entry
-    meta:
-      type: view.component
-      name: markdown
-      title: Markdown Viewer
-      tag_name: example-markdown
-      entry_point: index.js
-      announced: true
-      secure: false
-      auto_register: true
-      url: /app/wc/markdown
-      props:
-        type: object
-        properties:
-          content:
-            type: string
-            default: ""
-            description: Markdown text to render
-          allowed-tags:
-            type: array
-            items:
-              type: string
-            default: []
-            description: Override sanitization tag whitelist (empty = use built-in defaults)
-          allowed-attributes:
-            type: string
-            default: ""
-            description: JSON object of tag→attributes mappings for sanitize-html
+    - name: markdown
+      kind: registry.entry
+      meta:
+          type: view.component
+          name: markdown
+          title: Markdown Viewer
+          tag_name: example-markdown
+          entry_point: index.js
+          announced: true
+          secure: false
+          auto_register: true
+          url: /app/wc/markdown
+          props:
+              type: object
+              properties:
+                  content:
+                      type: string
+                      default: ""
+                      description: Markdown text to render
+                  allowed-tags:
+                      type: array
+                      items:
+                          type: string
+                      default: []
+                      description: Override sanitization tag whitelist (empty = use built-in defaults)
+                  allowed-attributes:
+                      type: string
+                      default: ""
+                      description: JSON object of tag→attributes mappings for sanitize-html
 
-  - name: counter-persist
-    kind: registry.entry
-    meta:
-      type: view.component
-      name: counter-persist
-      title: Counter Persist
-      tag_name: example-counter-persist
-      entry_point: index.js
-      announced: true
-      secure: false
-      auto_register: true
-      url: /app/wc/counter-persist
-      props:
-        type: object
-        properties:
-          persist-key:
-            type: string
-            description: Key prefix for state persistence. Different keys = separate state.
-      events:
-        type: object
-        properties:
-          count-changed:
-            type: object
-            properties:
-              count:
-                type: number
-            description: Fired when count value changes
+    - name: counter-persist
+      kind: registry.entry
+      meta:
+          type: view.component
+          name: counter-persist
+          title: Counter Persist
+          tag_name: example-counter-persist
+          entry_point: index.js
+          announced: true
+          secure: false
+          auto_register: true
+          url: /app/wc/counter-persist
+          props:
+              type: object
+              properties:
+                  persist-key:
+                      type: string
+                      description: Key prefix for state persistence. Different keys = separate state.
+          events:
+              type: object
+              properties:
+                  count-changed:
+                      type: object
+                      properties:
+                          count:
+                              type: number
+                      description: Fired when count value changes
 
-  - name: model-gallery
-    kind: registry.entry
-    meta:
-      type: view.component
-      name: model-gallery
-      title: Model Gallery
-      tag_name: example-model-gallery
-      entry_point: index.js
-      announced: true
-      secure: false
-      auto_register: true
-      url: /app/wc/model-gallery
-      props:
-        type: object
-        properties:
-          show-details:
-            type: boolean
-            default: true
-            description: Whether to show model details (description, capabilities)
-      events:
-        type: object
-        properties:
-          model-selected:
-            type: object
-            properties:
-              name:
-                type: string
-              provider:
-                type: string
-            description: Fired when a model card is clicked
+    - name: model-gallery
+      kind: registry.entry
+      meta:
+          type: view.component
+          name: model-gallery
+          title: Model Gallery
+          tag_name: example-model-gallery
+          entry_point: index.js
+          announced: true
+          secure: false
+          auto_register: true
+          url: /app/wc/model-gallery
+          props:
+              type: object
+              properties:
+                  show-details:
+                      type: boolean
+                      default: true
+                      description: Whether to show model details (description, capabilities)
+          events:
+              type: object
+              properties:
+                  model-selected:
+                      type: object
+                      properties:
+                          name:
+                              type: string
+                          provider:
+                              type: string
+                      description: Fired when a model card is clicked

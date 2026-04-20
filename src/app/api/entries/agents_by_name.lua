@@ -30,7 +30,7 @@ local function get_agent_by_name(name)
     local entries, err = registry.find({
         [".kind"] = "registry.entry",
         ["meta.type"] = "agent.gen1",
-        ["meta.name"] = name
+        ["meta.name"] = name,
     })
 
     if err or not entries or #entries == 0 then
@@ -53,7 +53,7 @@ local function handler()
         res:set_content_type(http.CONTENT.JSON)
         res:write_json({
             success = false,
-            error = "Missing 'agents' query parameter"
+            error = "Missing 'agents' query parameter",
         })
         return
     end
@@ -73,10 +73,8 @@ local function handler()
     res:set_status(http.STATUS.OK)
     res:write_json({
         success = true,
-        agents = result
+        agents = result,
     })
 end
 
-return {
-    handler = handler
-}
+return { handler = handler }

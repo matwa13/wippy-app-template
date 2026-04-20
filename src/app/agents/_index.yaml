@@ -2,258 +2,258 @@ version: "1.0"
 namespace: app.agents
 
 entries:
-  - name: wippy
-    kind: registry.entry
-    meta:
-      type: agent.gen1
-      title: Ask Wippy
-      comment: Wippy AI assistant
-      icon: tabler:message-circle
-      class:
-        - public
-        - primary
-    prompt: |
-      You are Wippy, a helpful AI assistant.
-      You can help users navigate the application, manage their personal tasks, and answer general questions.
+    - name: wippy
+      kind: registry.entry
+      meta:
+          type: agent.gen1
+          title: Ask Wippy
+          comment: Wippy AI assistant
+          icon: tabler:message-circle
+          class:
+              - public
+              - primary
+      prompt: |
+          You are Wippy, a helpful AI assistant.
+          You can help users navigate the application, manage their personal tasks, and answer general questions.
 
-      Available pages (use NavigateTo):
-      - home: Home page
-      - users: User management
-      - tasks: Personal tasks
-      - trips: Trip planning
+          Available pages (use NavigateTo):
+          - home: Home page
+          - users: User management
+          - tasks: Personal tasks
+          - trips: Trip planning
 
-      If the user asks to see or open a specific page, use NavigateTo.
-      Be concise and helpful.
-    model: claude-4-5-haiku
-    temperature: 0.5
-    max_tokens: 8000
-    traits:
-      - id: userspace.user.traits:user_aware
-      - id: wippy.agent.traits:time_aware
-      - id: app.agents:wippy_nav_trait
-      - id: app.agents:wippy_artifacts_trait
-      - id: app.tasks:tasks_trait
-      - id: app.agents:trips_trait
+          If the user asks to see or open a specific page, use NavigateTo.
+          Be concise and helpful.
+      model: claude-4-5-haiku
+      temperature: 0.5
+      max_tokens: 8000
+      traits:
+          - id: userspace.user.traits:user_aware
+          - id: wippy.agent.traits:time_aware
+          - id: app.agents:wippy_nav_trait
+          - id: app.agents:wippy_artifacts_trait
+          - id: app.tasks:tasks_trait
+          - id: app.agents:trips_trait
 
-  - name: wippy_nav_trait
-    kind: registry.entry
-    meta:
-      type: agent.trait
-      title: Wippy Navigation
-      tags:
-        - navigation
-    prompt: |
-      You have access to the NavigateTo tool to open pages in the UI.
-      Use NavigateTo when the user wants to open or view a specific page.
-    tools:
-      - app.agents:navigate_to
+    - name: wippy_nav_trait
+      kind: registry.entry
+      meta:
+          type: agent.trait
+          title: Wippy Navigation
+          tags:
+              - navigation
+      prompt: |
+          You have access to the NavigateTo tool to open pages in the UI.
+          Use NavigateTo when the user wants to open or view a specific page.
+      tools:
+          - app.agents:navigate_to
 
-  - name: wippy_artifacts_trait
-    kind: registry.entry
-    meta:
-      type: agent.trait
-      title: Wippy Artifacts
-      tags:
-        - artifacts
-    prompt: |
-      You have the CreateArtifact tool to create rich content artifacts displayed inline in the chat.
+    - name: wippy_artifacts_trait
+      kind: registry.entry
+      meta:
+          type: agent.trait
+          title: Wippy Artifacts
+          tags:
+              - artifacts
+      prompt: |
+          You have the CreateArtifact tool to create rich content artifacts displayed inline in the chat.
 
-      Two modes:
-      1. **Content mode** — pass `content` (HTML or Markdown) directly.
-         Use for: formatted text, code snippets, tables, documentation.
-      2. **Component mode** — pass `tag_name` and `props` to render a registered web component.
-         Use for: diagrams, interactive widgets, visualizations.
-         Only use tag names from the available components list in the session context.
+          Two modes:
+          1. **Content mode** — pass `content` (HTML or Markdown) directly.
+             Use for: formatted text, code snippets, tables, documentation.
+          2. **Component mode** — pass `tag_name` and `props` to render a registered web component.
+             Use for: diagrams, interactive widgets, visualizations.
+             Only use tag names from the available components list in the session context.
 
-      After calling the tool you will receive instructions with an artifact tag — include that tag in your response.
-    tools:
-      - app.agents:create_artifact
+          After calling the tool you will receive instructions with an artifact tag — include that tag in your response.
+      tools:
+          - app.agents:create_artifact
 
-  - name: trips_trait
-    kind: registry.entry
-    meta:
-      type: agent.trait
-      title: Trip Planning
-      tags:
-        - trips
-    prompt: |
-      You can plan trips for the user.
-      - PlanTrip(destination, start_date, end_date, origin?) — start a trip planning workflow.
-      If any required field is missing, ask the user conversationally before calling. Dates must
-      be full ISO dates with year (yyyy-mm-dd). When the user mentions a date without a year,
-      use the current year (provided in the prompt context by the time_aware trait) — never use
-      any earlier year.
-      After calling PlanTrip successfully, reply with a short confirmation and navigate to the /trips/<id> page where
-      user may check progress
-    tools:
-      - app.trips:plan_trip
+    - name: trips_trait
+      kind: registry.entry
+      meta:
+          type: agent.trait
+          title: Trip Planning
+          tags:
+              - trips
+      prompt: |
+          You can plan trips for the user.
+          - PlanTrip(destination, start_date, end_date, origin?) — start a trip planning workflow.
+          If any required field is missing, ask the user conversationally before calling. Dates must
+          be full ISO dates with year (yyyy-mm-dd). When the user mentions a date without a year,
+          use the current year (provided in the prompt context by the time_aware trait) — never use
+          any earlier year.
+          After calling PlanTrip successfully, reply with a short confirmation and navigate to the /trips/<id> page where
+          user may check progress
+      tools:
+          - app.trips:plan_trip
 
-  - name: create_artifact
-    kind: function.lua
-    meta:
-      type: tool
-      title: Create Artifact
-      input_schema: |
-        {
-          "type": "object",
-          "properties": {
-            "title": {
-              "type": "string",
-              "description": "Title for the artifact"
-            },
-            "content": {
-              "type": "string",
-              "description": "The content body. For content mode: HTML or Markdown string. For component mode: optional, usually use props instead."
-            },
-            "content_type": {
-              "type": "string",
-              "description": "MIME type for content mode",
-              "enum": ["text/html", "text/markdown"],
-              "default": "text/markdown"
-            },
-            "tag_name": {
-              "type": "string",
-              "description": "Web component tag name for component mode (e.g. 'example-mermaid'). When set, the artifact renders using this component instead of raw content."
-            },
-            "props": {
-              "type": "object",
-              "description": "Props object passed to the web component. Only used with tag_name."
-            }
-          },
-          "required": ["title"],
-          "additionalProperties": false
-        }
-      llm_alias: CreateArtifact
-      llm_description: |
-        Create a rich content artifact rendered inline in the chat.
-        Two modes: (1) Content mode — provide title + content (HTML or Markdown).
-        (2) Component mode — provide title + tag_name + props to render a registered web component.
-        Use component mode when a matching component is available (check session context for available components).
-    source: file://create_artifact.lua
-    modules:
-      - json
-    imports: {}
-    method: handler
-    pool:
-      size: 2
+    - name: create_artifact
+      kind: function.lua
+      meta:
+          type: tool
+          title: Create Artifact
+          input_schema: |
+              {
+                "type": "object",
+                "properties": {
+                  "title": {
+                    "type": "string",
+                    "description": "Title for the artifact"
+                  },
+                  "content": {
+                    "type": "string",
+                    "description": "The content body. For content mode: HTML or Markdown string. For component mode: optional, usually use props instead."
+                  },
+                  "content_type": {
+                    "type": "string",
+                    "description": "MIME type for content mode",
+                    "enum": ["text/html", "text/markdown"],
+                    "default": "text/markdown"
+                  },
+                  "tag_name": {
+                    "type": "string",
+                    "description": "Web component tag name for component mode (e.g. 'example-mermaid'). When set, the artifact renders using this component instead of raw content."
+                  },
+                  "props": {
+                    "type": "object",
+                    "description": "Props object passed to the web component. Only used with tag_name."
+                  }
+                },
+                "required": ["title"],
+                "additionalProperties": false
+              }
+          llm_alias: CreateArtifact
+          llm_description: |
+              Create a rich content artifact rendered inline in the chat.
+              Two modes: (1) Content mode — provide title + content (HTML or Markdown).
+              (2) Component mode — provide title + tag_name + props to render a registered web component.
+              Use component mode when a matching component is available (check session context for available components).
+      source: file://create_artifact.lua
+      modules:
+          - json
+      imports: {}
+      method: handler
+      pool:
+          size: 2
 
-  - name: navigate_to
-    kind: function.lua
-    meta:
-      type: tool
-      title: Navigate To Page
-      input_schema: |
-        {
-          "type": "object",
-          "properties": {
-            "page": {
-              "type": "string",
-              "description": "The page to navigate to",
-              "enum": [
-                "home",
-                "users",
-                "tasks",
-                "trips"
-              ]
-            }
-          },
-          "required": ["page"],
-          "additionalProperties": false
-        }
-      llm_alias: NavigateTo
-      llm_description: Open a page in the UI for the user.
-    source: file://navigate_to.lua
-    modules:
-      - ctx
-    imports: {}
-    method: handler
-    pool:
-      size: 2
+    - name: navigate_to
+      kind: function.lua
+      meta:
+          type: tool
+          title: Navigate To Page
+          input_schema: |
+              {
+                "type": "object",
+                "properties": {
+                  "page": {
+                    "type": "string",
+                    "description": "The page to navigate to",
+                    "enum": [
+                      "home",
+                      "users",
+                      "tasks",
+                      "trips"
+                    ]
+                  }
+                },
+                "required": ["page"],
+                "additionalProperties": false
+              }
+          llm_alias: NavigateTo
+          llm_description: Open a page in the UI for the user.
+      source: file://navigate_to.lua
+      modules:
+          - ctx
+      imports: {}
+      method: handler
+      pool:
+          size: 2
 
-  - name: trip_attractions_researcher
-    kind: registry.entry
-    meta:
-      type: agent.gen1
-      title: Trip Attractions Researcher
-      comment: Returns up to 12 candidate attractions for a destination
-    prompt: |
-      You are a travel research agent. Given a destination and trip dates, return between
-      6 and 12 notable attractions as stable facts about that place. Do NOT schedule them —
-      another agent handles planning. Prefer well-known sights; include a short description,
-      a typical visit duration in hours, and any constraints that would affect scheduling
-      (e.g. closed on certain days, best at sunset). Always return at least 6 attractions —
-      never an empty list.
+    - name: trip_attractions_researcher
+      kind: registry.entry
+      meta:
+          type: agent.gen1
+          title: Trip Attractions Researcher
+          comment: Returns up to 12 candidate attractions for a destination
+      prompt: |
+          You are a travel research agent. Given a destination and trip dates, return between
+          6 and 12 notable attractions as stable facts about that place. Do NOT schedule them —
+          another agent handles planning. Prefer well-known sights; include a short description,
+          a typical visit duration in hours, and any constraints that would affect scheduling
+          (e.g. closed on certain days, best at sunset). Always return at least 6 attractions —
+          never an empty list.
 
-      OUTPUT FORMAT: Reply with a single raw JSON object that validates against the exit_schema.
-      Do NOT wrap it in ```json code fences. Do NOT add any prose before or after the object.
-      Do NOT emit <search> or similar tags. The entire response body must be the JSON object.
-    model: claude-4-5-haiku
-    temperature: 0.3
-    max_tokens: 4000
+          OUTPUT FORMAT: Reply with a single raw JSON object that validates against the exit_schema.
+          Do NOT wrap it in ```json code fences. Do NOT add any prose before or after the object.
+          Do NOT emit <search> or similar tags. The entire response body must be the JSON object.
+      model: claude-4-5-haiku
+      temperature: 0.3
+      max_tokens: 4000
 
-  - name: trip_packing_researcher
-    kind: registry.entry
-    meta:
-      type: agent.gen1
-      title: Trip Packing Researcher
-      comment: Climate/season-aware packing list
-    prompt: |
-      You are a travel packing advisor. Given a destination, dates, and inferred season,
-      produce a concise, practical packing list grouped by category. Focus on what the climate
-      and likely activities require.
+    - name: trip_packing_researcher
+      kind: registry.entry
+      meta:
+          type: agent.gen1
+          title: Trip Packing Researcher
+          comment: Climate/season-aware packing list
+      prompt: |
+          You are a travel packing advisor. Given a destination, dates, and inferred season,
+          produce a concise, practical packing list grouped by category. Focus on what the climate
+          and likely activities require.
 
-      OUTPUT FORMAT: Reply with a single raw JSON object that validates against the exit_schema.
-      The top-level key MUST be "packing" (an array of {category, items} objects). Do NOT use
-      "packing_list" or any other key. Do NOT wrap the object in ```json code fences. Do NOT
-      add prose before or after. The entire response body must be the JSON object.
-    model: claude-4-5-haiku
-    temperature: 0.3
-    max_tokens: 2000
+          OUTPUT FORMAT: Reply with a single raw JSON object that validates against the exit_schema.
+          The top-level key MUST be "packing" (an array of {category, items} objects). Do NOT use
+          "packing_list" or any other key. Do NOT wrap the object in ```json code fences. Do NOT
+          add prose before or after. The entire response body must be the JSON object.
+      model: claude-4-5-haiku
+      temperature: 0.3
+      max_tokens: 2000
 
-  - name: trip_iata_resolver
-    kind: registry.entry
-    meta:
-      type: agent.gen1
-      title: Trip IATA Resolver
-      comment: Resolves origin/destination city names to IATA airport codes
-    prompt: |
-      You resolve city names to the primary 3-letter IATA airport code for that city.
-      Given `origin` and `destination` (either may be empty/missing), return the IATA code
-      for the main international airport serving each city. Use the busiest/best-connected
-      airport when a city has several (e.g. London → LHR, New York → JFK, Paris → CDG,
-      Tokyo → HND, Moscow → SVO). Use uppercase 3-letter codes.
+    - name: trip_iata_resolver
+      kind: registry.entry
+      meta:
+          type: agent.gen1
+          title: Trip IATA Resolver
+          comment: Resolves origin/destination city names to IATA airport codes
+      prompt: |
+          You resolve city names to the primary 3-letter IATA airport code for that city.
+          Given `origin` and `destination` (either may be empty/missing), return the IATA code
+          for the main international airport serving each city. Use the busiest/best-connected
+          airport when a city has several (e.g. London → LHR, New York → JFK, Paris → CDG,
+          Tokyo → HND, Moscow → SVO). Use uppercase 3-letter codes.
 
-      When a field is missing, empty, or you cannot confidently identify an airport for it
-      (e.g. the place is too small or ambiguous), return `null` for that field. Never guess.
+          When a field is missing, empty, or you cannot confidently identify an airport for it
+          (e.g. the place is too small or ambiguous), return `null` for that field. Never guess.
 
-      OUTPUT FORMAT: Reply with a single raw JSON object that validates against the
-      exit_schema. Both keys MUST be present; each value is either a 3-letter IATA string
-      or null. Do NOT wrap in ```json fences. Do NOT add prose before or after.
-    model: claude-4-5-haiku
-    temperature: 0.1
-    max_tokens: 500
+          OUTPUT FORMAT: Reply with a single raw JSON object that validates against the
+          exit_schema. Both keys MUST be present; each value is either a 3-letter IATA string
+          or null. Do NOT wrap in ```json fences. Do NOT add prose before or after.
+      model: claude-4-5-haiku
+      temperature: 0.1
+      max_tokens: 500
 
-  - name: trip_itinerary_synthesizer
-    kind: registry.entry
-    meta:
-      type: agent.gen1
-      title: Trip Itinerary Synthesizer
-      comment: Assigns attractions to days and time slots
-    prompt: |
-      You plan daily itineraries. Your input is a JSON object with these keys:
-      - `attractions`: the candidate attractions list — select from this list only (do NOT invent new ones).
-      - `context`: trip metadata including `start_date`, `end_date`, `duration_days`, `destination`, `season`.
-      - `packing`, `flights`: ignore for itinerary planning.
+    - name: trip_itinerary_synthesizer
+      kind: registry.entry
+      meta:
+          type: agent.gen1
+          title: Trip Itinerary Synthesizer
+          comment: Assigns attractions to days and time slots
+      prompt: |
+          You plan daily itineraries. Your input is a JSON object with these keys:
+          - `attractions`: the candidate attractions list — select from this list only (do NOT invent new ones).
+          - `context`: trip metadata including `start_date`, `end_date`, `duration_days`, `destination`, `season`.
+          - `packing`, `flights`: ignore for itinerary planning.
 
-      Schedule each selected attraction on a specific date in the inclusive range
-      `context.start_date` … `context.end_date`. Use the attraction's `name` value verbatim
-      as `attraction_name` — any paraphrase will be rejected. The first date is arrival day
-      (<= 2 items) and the last date is departure day (<= 2 items). Prefer morning/afternoon/
-      evening slots. Always return at least one item per non-arrival/departure day.
+          Schedule each selected attraction on a specific date in the inclusive range
+          `context.start_date` … `context.end_date`. Use the attraction's `name` value verbatim
+          as `attraction_name` — any paraphrase will be rejected. The first date is arrival day
+          (<= 2 items) and the last date is departure day (<= 2 items). Prefer morning/afternoon/
+          evening slots. Always return at least one item per non-arrival/departure day.
 
-      OUTPUT FORMAT: Reply with a single raw JSON object that validates against the exit_schema.
-      Do NOT wrap it in ```json code fences. Do NOT add prose before or after. The entire
-      response body must be the JSON object.
-    model: claude-4-5-haiku
-    temperature: 0.4
-    max_tokens: 4000
+          OUTPUT FORMAT: Reply with a single raw JSON object that validates against the exit_schema.
+          Do NOT wrap it in ```json code fences. Do NOT add prose before or after. The entire
+          response body must be the JSON object.
+      model: claude-4-5-haiku
+      temperature: 0.4
+      max_tokens: 4000
