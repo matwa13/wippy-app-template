@@ -1,6 +1,20 @@
+local json = require("json")
+
 local USER_HUB_PREFIX = "user."
 
 local M = {}
+
+--- Defensive coerce: flow nodes sometimes deliver an upstream JSON payload as
+--- a string rather than a decoded table (observed for agent exit_schema
+--- outputs). This coerces either shape into a table.
+function M.as_table(v)
+    if type(v) == "table" then return v end
+    if type(v) == "string" then
+        local ok, decoded = pcall(json.decode, v)
+        if ok and type(decoded) == "table" then return decoded end
+    end
+    return {}
+end
 
 --- Broadcast a trips:changed event to the given user hub.
 function M.notify(user_id, trip_id)

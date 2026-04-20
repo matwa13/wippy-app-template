@@ -49,30 +49,73 @@ function submit() {
 <template>
   <div class="h-full flex flex-col">
     <div class="px-5 py-4 border-b border-surface-200 dark:border-surface-700 bg-surface-card shrink-0 flex items-center gap-3">
-      <Button text rounded size="small" @click="router.push('/trips')" aria-label="Back">
-        <template #icon><Icon icon="tabler:arrow-left" class="w-4 h-4" /></template>
+      <Button
+        text
+        rounded
+        size="small"
+        aria-label="Back"
+        @click="router.push('/trips')"
+      >
+        <template #icon>
+          <Icon
+            icon="tabler:arrow-left"
+            class="w-4 h-4"
+          />
+        </template>
       </Button>
-      <h1 class="text-sm font-semibold text-surface-900 dark:text-surface-0">New Trip</h1>
+      <h1 class="text-sm font-semibold text-surface-900 dark:text-surface-0">
+        New Trip
+      </h1>
     </div>
-    <form class="px-5 py-5 grid grid-cols-2 gap-4 max-w-lg" @submit.prevent="submit">
+    <form
+      class="px-5 py-5 grid grid-cols-2 gap-4 max-w-lg"
+      @submit.prevent="submit"
+    >
       <div class="col-span-2">
         <label class="block mb-1 text-xs font-medium text-muted-color">Destination</label>
-        <InputText v-model="destination" fluid placeholder="Tokyo" :disabled="mutation.isPending.value" />
+        <InputText
+          v-model="destination"
+          fluid
+          placeholder="Tokyo"
+          :disabled="mutation.isPending.value"
+        />
       </div>
       <div class="col-span-2">
         <label class="block mb-1 text-xs font-medium text-muted-color">Origin (optional)</label>
-        <InputText v-model="origin" fluid placeholder="Berlin" :disabled="mutation.isPending.value" />
+        <InputText
+          v-model="origin"
+          fluid
+          placeholder="Berlin"
+          :disabled="mutation.isPending.value"
+        />
       </div>
       <div>
         <label class="block mb-1 text-xs font-medium text-muted-color">Start date</label>
-        <DatePicker v-model="startDate" date-format="yy-mm-dd" :min-date="new Date()" fluid show-icon />
+        <DatePicker
+          v-model="startDate"
+          date-format="yy-mm-dd"
+          :min-date="new Date()"
+          fluid
+          show-icon
+        />
       </div>
       <div>
         <label class="block mb-1 text-xs font-medium text-muted-color">End date</label>
-        <DatePicker v-model="endDate" date-format="yy-mm-dd" :min-date="startDate ?? new Date()" fluid show-icon />
+        <DatePicker
+          v-model="endDate"
+          date-format="yy-mm-dd"
+          :min-date="startDate ?? new Date()"
+          fluid
+          show-icon
+        />
       </div>
       <div class="col-span-2 flex justify-end">
-        <Button type="submit" label="Plan Trip" :disabled="!destination.trim() || !startDate || !endDate || mutation.isPending.value" :loading="mutation.isPending.value" />
+        <Button
+          type="submit"
+          label="Plan Trip"
+          :disabled="!destination.trim() || !startDate || !endDate || mutation.isPending.value"
+          :loading="mutation.isPending.value"
+        />
       </div>
     </form>
   </div>

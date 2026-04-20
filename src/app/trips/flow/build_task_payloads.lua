@@ -105,7 +105,13 @@ end
 local function today_iso() return os.date("!%Y-%m-%d"):sub(1, 10) end
 
 local function handler(input)
-    local trip_id = input.trip_id
+    local ctx = trips_common.as_table(input.context)
+    local itinerary_out = trips_common.as_table(input.default)
+    local support = trips_common.as_table(input.support)
+    local flights = trips_common.as_table(support.flights)
+
+    local trip_id = ctx.trip_id
+    local user_id = ctx.user_id
 
     if trip_id then
         trip_repo.update_node_state(trip_id, "build_task_payloads",
@@ -113,25 +119,25 @@ local function handler(input)
     end
 
     local rows = build({
-        today              = input.today or today_iso(),
+        today              = ctx.today or today_iso(),
         trip_id            = trip_id,
-        destination        = input.destination,
-        origin             = input.origin,
-        start_date         = input.start_date,
-        end_date           = input.end_date,
-        google_flights_url = input.google_flights_url,
-        skyscanner_url     = input.skyscanner_url,
-        packing            = input.packing,
-        itinerary          = input.itinerary,
+        destination        = ctx.destination,
+        origin             = ctx.origin,
+        start_date         = ctx.start_date,
+        end_date           = ctx.end_date,
+        google_flights_url = flights.google_flights_url,
+        skyscanner_url     = flights.skyscanner_url,
+        packing            = support.packing,
+        itinerary          = itinerary_out.itinerary,
     })
 
     if trip_id then
         trip_repo.update_node_state(trip_id, "build_task_payloads",
             { status = "done", ended_at = os.time() })
-        trips_common.notify(input.user_id, trip_id)
+        trips_common.notify(user_id, trip_id)
     end
 
-    return { task_rows = rows, user_id = input.user_id, trip_id = trip_id }
+    return { task_rows = rows }
 end
 
 return { build = build, handler = handler }

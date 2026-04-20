@@ -6,23 +6,22 @@ local function handler(input)
     local agent_out = trips_common.as_table(input.default)
     local trip_id = ctx.trip_id
     local user_id = ctx.user_id
-    local packing = agent_out.packing or {}
+    local itinerary = agent_out.itinerary or {}
 
-    if #packing == 0 then
-        trip_repo.append_warning(trip_id, "Packing list unavailable — continuing without it.")
-        trip_repo.update_node_state(trip_id, "packing_research",
+    if #itinerary == 0 then
+        trip_repo.update_node_state(trip_id, "itinerary_synthesize",
             { status = "failed", ended_at = os.time(),
-              error = "empty packing list" })
+              error = "synthesizer returned empty itinerary" })
         trips_common.notify(user_id, trip_id)
-        return {}
+        return nil, "empty itinerary"
     end
 
-    trip_repo.update_plan_section(trip_id, "packing", packing)
-    trip_repo.update_node_state(trip_id, "packing_research",
+    trip_repo.update_plan_section(trip_id, "itinerary", itinerary)
+    trip_repo.update_node_state(trip_id, "itinerary_synthesize",
         { status = "done", ended_at = os.time() })
     trips_common.notify(user_id, trip_id)
 
-    return packing
+    return { itinerary = itinerary }
 end
 
 return { handler = handler }

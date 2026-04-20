@@ -23,7 +23,7 @@ local function define_tests()
             local t, err = trip_repo.get(TEST_USER, state.trip_id)
             test.is_nil(err)
             test.eq(t.workflow_state.nodes.normalize_input.status, "pending")
-            test.eq(t.workflow_state.nodes.itinerary_critic.iterations, 0)
+            test.eq(t.workflow_state.nodes.itinerary_synthesize.status, "pending")
             test.eq(#(t.plan_json.warnings or {}), 0)
         end)
 

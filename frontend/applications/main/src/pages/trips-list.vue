@@ -65,36 +65,84 @@ function statusClass(s: string) {
     <div class="px-5 py-4 border-b border-surface-200 dark:border-surface-700 bg-surface-card shrink-0 flex items-center justify-between">
       <div class="flex items-center gap-3">
         <div class="flex items-center justify-center w-8 h-8 rounded-lg bg-primary">
-          <Icon icon="tabler:plane" class="w-5 h-5 text-primary-contrast" aria-hidden="true" />
+          <Icon
+            icon="tabler:plane"
+            class="w-5 h-5 text-primary-contrast"
+            aria-hidden="true"
+          />
         </div>
         <div>
-          <h1 class="text-sm font-semibold text-surface-900 dark:text-surface-0">Trips</h1>
-          <p class="text-[11px] text-surface-400">{{ (trips ?? []).length }} total</p>
+          <h1 class="text-sm font-semibold text-surface-900 dark:text-surface-0">
+            Trips
+          </h1>
+          <p class="text-[11px] text-surface-400">
+            {{ (trips ?? []).length }} total
+          </p>
         </div>
       </div>
       <div class="flex items-center gap-2">
-        <SelectButton v-model="filter" :options="FILTER_OPTIONS" option-label="label" option-value="value" size="small" :allow-empty="false" />
-        <Button label="New Trip" size="small" @click="router.push('/trips/create')">
-          <template #icon><Icon icon="tabler:plus" class="w-4 h-4" /></template>
+        <SelectButton
+          v-model="filter"
+          :options="FILTER_OPTIONS"
+          option-label="label"
+          option-value="value"
+          size="small"
+          :allow-empty="false"
+        />
+        <Button
+          label="New Trip"
+          size="small"
+          @click="router.push('/trips/create')"
+        >
+          <template #icon>
+            <Icon
+              icon="tabler:plus"
+              class="w-4 h-4"
+            />
+          </template>
         </Button>
       </div>
     </div>
     <div class="flex-1 overflow-y-auto">
-      <ul v-if="visible.length > 0" class="divide-y divide-surface-200 dark:divide-surface-700">
-        <li v-for="t in visible" :key="t.id" class="px-5 py-3 hover:bg-surface-50 dark:hover:bg-surface-900/50 cursor-pointer" @click="router.push('/trips/' + t.id)">
+      <ul
+        v-if="visible.length > 0"
+        class="divide-y divide-surface-200 dark:divide-surface-700"
+      >
+        <li
+          v-for="t in visible"
+          :key="t.id"
+          class="px-5 py-3 hover:bg-surface-50 dark:hover:bg-surface-900/50 cursor-pointer"
+          @click="router.push('/trips/' + t.id)"
+        >
           <div class="flex items-center justify-between gap-3">
             <div class="min-w-0">
-              <div class="text-sm font-medium text-surface-900 dark:text-surface-0 truncate">{{ t.title }}</div>
-              <div class="text-[11px] text-surface-400">{{ t.start_date }} – {{ t.end_date }}</div>
+              <div class="text-sm font-medium text-surface-900 dark:text-surface-0 truncate">
+                {{ t.title }}
+              </div>
+              <div class="text-[11px] text-surface-400">
+                {{ t.start_date }} – {{ t.end_date }}
+              </div>
             </div>
-            <span class="text-[10px] font-medium px-1.5 py-0.5 rounded shrink-0" :class="statusClass(t.status)">{{ t.status }}</span>
+            <span
+              class="text-[10px] font-medium px-1.5 py-0.5 rounded shrink-0"
+              :class="statusClass(t.status)"
+            >{{ t.status }}</span>
           </div>
         </li>
       </ul>
-      <div v-else-if="!isPending" class="h-full flex items-center justify-center">
+      <div
+        v-else-if="!isPending"
+        class="h-full flex items-center justify-center"
+      >
         <div class="text-center">
-          <Icon icon="tabler:plane" class="w-10 h-10 text-surface-300 dark:text-surface-600 mx-auto mb-2" aria-hidden="true" />
-          <p class="text-sm text-surface-400">No trips yet — create one or ask the assistant.</p>
+          <Icon
+            icon="tabler:plane"
+            class="w-10 h-10 text-surface-300 dark:text-surface-600 mx-auto mb-2"
+            aria-hidden="true"
+          />
+          <p class="text-sm text-surface-400">
+            No trips yet — create one or ask the assistant.
+          </p>
         </div>
       </div>
     </div>

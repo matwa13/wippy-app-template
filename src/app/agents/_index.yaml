@@ -175,35 +175,19 @@ entries:
       title: Trip Attractions Researcher
       comment: Returns up to 12 candidate attractions for a destination
     prompt: |
-      You are a travel research agent. Given a destination and trip dates, return up to 12
-      notable attractions as stable facts about that place. Do NOT schedule them — another
-      agent handles planning. Prefer well-known sights; include a short description, a typical
-      visit duration in hours, and any constraints that would affect scheduling (e.g. closed
-      on certain days, best at sunset). Your reply MUST match the exit_schema.
+      You are a travel research agent. Given a destination and trip dates, return between
+      6 and 12 notable attractions as stable facts about that place. Do NOT schedule them —
+      another agent handles planning. Prefer well-known sights; include a short description,
+      a typical visit duration in hours, and any constraints that would affect scheduling
+      (e.g. closed on certain days, best at sunset). Always return at least 6 attractions —
+      never an empty list.
+
+      OUTPUT FORMAT: Reply with a single raw JSON object that validates against the exit_schema.
+      Do NOT wrap it in ```json code fences. Do NOT add any prose before or after the object.
+      Do NOT emit <search> or similar tags. The entire response body must be the JSON object.
     model: claude-4-5-sonnet
     temperature: 0.3
     max_tokens: 4000
-    arena:
-      max_iterations: 3
-      exit_schema:
-        type: object
-        required: [attractions]
-        additionalProperties: false
-        properties:
-          attractions:
-            type: array
-            maxItems: 12
-            items:
-              type: object
-              required: [name, description, typical_duration_hours, constraints]
-              additionalProperties: false
-              properties:
-                name: { type: string }
-                description: { type: string }
-                typical_duration_hours: { type: number }
-                constraints:
-                  type: array
-                  items: { type: string }
 
   - name: trip_packing_researcher
     kind: registry.entry
@@ -214,28 +198,15 @@ entries:
     prompt: |
       You are a travel packing advisor. Given a destination, dates, and inferred season,
       produce a concise, practical packing list grouped by category. Focus on what the climate
-      and likely activities require. Your reply MUST match the exit_schema.
+      and likely activities require.
+
+      OUTPUT FORMAT: Reply with a single raw JSON object that validates against the exit_schema.
+      The top-level key MUST be "packing" (an array of {category, items} objects). Do NOT use
+      "packing_list" or any other key. Do NOT wrap the object in ```json code fences. Do NOT
+      add prose before or after. The entire response body must be the JSON object.
     model: claude-4-5-haiku
     temperature: 0.3
     max_tokens: 2000
-    arena:
-      max_iterations: 3
-      exit_schema:
-        type: object
-        required: [packing]
-        additionalProperties: false
-        properties:
-          packing:
-            type: array
-            items:
-              type: object
-              required: [category, items]
-              additionalProperties: false
-              properties:
-                category: { type: string }
-                items:
-                  type: array
-                  items: { type: string }
 
   - name: trip_itinerary_synthesizer
     kind: registry.entry
@@ -249,33 +220,14 @@ entries:
       attraction's `name` value verbatim as `attraction_name` — any paraphrase will be rejected.
       The first date is arrival day (<= 2 items) and the last date is departure day (<= 2 items).
       Prefer morning/afternoon/evening slots. When a critic_feedback is present in your input,
-      address each issue in your next output. Your reply MUST match the exit_schema.
+      address each issue in your next output.
+
+      OUTPUT FORMAT: Reply with a single raw JSON object that validates against the exit_schema.
+      Do NOT wrap it in ```json code fences. Do NOT add prose before or after. The entire
+      response body must be the JSON object.
     model: claude-4-5-sonnet
     temperature: 0.4
     max_tokens: 4000
-    arena:
-      max_iterations: 4
-      exit_func_id: app.trips:validate_synthesizer_exit
-      exit_schema:
-        type: object
-        required: [itinerary]
-        additionalProperties: false
-        properties:
-          itinerary:
-            type: array
-            items:
-              type: object
-              required: [date, attraction_name, time_slot, estimated_duration_hours, description, constraints]
-              additionalProperties: false
-              properties:
-                date: { type: string }
-                attraction_name: { type: string }
-                time_slot: { type: string, enum: [morning, afternoon, evening] }
-                estimated_duration_hours: { type: number }
-                description: { type: string }
-                constraints:
-                  type: array
-                  items: { type: string }
 
   - name: trip_itinerary_critic
     kind: registry.entry
@@ -288,18 +240,10 @@ entries:
       Check for: arrival/departure over-scheduling, pacing (too many long visits in one day),
       geographic thrash (consecutive items on opposite sides of the city), ignored constraints
       (e.g. "closed Mondays"). Emit status="ok" only if the plan is acceptable. Otherwise return
-      concrete issues the synthesizer can fix. Your reply MUST match the exit_schema.
+      concrete issues the synthesizer can fix.
+
+      OUTPUT FORMAT: Reply with a single raw JSON object that validates against the exit_schema.
+      Do NOT wrap it in ```json code fences. Do NOT add prose before or after.
     model: claude-4-5-haiku
     temperature: 0.3
     max_tokens: 2000
-    arena:
-      max_iterations: 3
-      exit_schema:
-        type: object
-        required: [status, issues]
-        additionalProperties: false
-        properties:
-          status: { type: string, enum: [ok, revise] }
-          issues:
-            type: array
-            items: { type: string }

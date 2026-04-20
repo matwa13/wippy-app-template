@@ -44,6 +44,8 @@ entries:
   - name: trips_common
     kind: library.lua
     source: file://trips_common.lua
+    modules:
+      - json
 
   - name: trip_flow
     kind: library.lua
@@ -173,6 +175,16 @@ entries:
   - name: save_packing
     kind: function.lua
     source: file://flow/save_packing.lua
+    imports:
+      trip_repo: app.trips:trip_repo
+      trips_common: app.trips:trips_common
+    method: handler
+    pool:
+      size: 2
+
+  - name: save_itinerary
+    kind: function.lua
+    source: file://flow/save_itinerary.lua
     imports:
       trip_repo: app.trips:trip_repo
       trips_common: app.trips:trips_common

@@ -4,9 +4,11 @@ local task_repo = require("task_repo")
 local tasks_common = require("tasks_common")
 
 local function handler(input)
-    local trip_id = input.trip_id
-    local user_id = input.user_id
-    local rows = input.task_rows or {}
+    local ctx = trips_common.as_table(input.context)
+    local payload = trips_common.as_table(input.default)
+    local trip_id = ctx.trip_id
+    local user_id = ctx.user_id
+    local rows = payload.task_rows or {}
 
     trip_repo.update_node_state(trip_id, "persist_tasks",
         { status = "running", started_at = os.time() })

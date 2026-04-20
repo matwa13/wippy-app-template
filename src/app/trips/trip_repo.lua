@@ -32,7 +32,6 @@ local INITIAL_WORKFLOW_STATE = {
         packing_research     = { status = "pending" },
         flights_linker       = { status = "pending" },
         itinerary_synthesize = { status = "pending" },
-        itinerary_critic     = { status = "pending", iterations = 0 },
         build_task_payloads  = { status = "pending" },
         persist_tasks        = { status = "pending" },
     }
