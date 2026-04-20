@@ -30,6 +30,7 @@ local INITIAL_WORKFLOW_STATE = {
         normalize_input      = { status = "pending" },
         attractions_research = { status = "pending" },
         packing_research     = { status = "pending" },
+        iata_resolver        = { status = "pending" },
         flights_linker       = { status = "pending" },
         itinerary_synthesize = { status = "pending" },
         build_task_payloads  = { status = "pending" },

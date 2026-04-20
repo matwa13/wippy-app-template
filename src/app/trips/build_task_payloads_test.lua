@@ -98,7 +98,21 @@ local function define_tests()
                                 estimated_duration_hours = 1, constraints = {} } },
             })
             test.eq(rows[1].title, "Book flights — Rome (2026-05-01 – 2026-05-05)")
-            test.ok(rows[1].notes:find("Origin not provided", 1, true))
+            test.ok(rows[1].notes:find("Search on Skyscanner", 1, true))
+        end)
+
+        test.it("shows unavailable note when skyscanner_url is missing", function()
+            local rows = builder.build({
+                today = FIXED_TODAY, trip_id = "t6",
+                destination = "Rome", origin = "Paris",
+                start_date = "2026-05-01", end_date = "2026-05-05",
+                skyscanner_url = "",
+                packing = nil,
+                itinerary = { { date = "2026-05-01", attraction_name = "Colosseum",
+                                description = "", time_slot = "morning",
+                                estimated_duration_hours = 1, constraints = {} } },
+            })
+            test.ok(rows[1].notes:find("unavailable", 1, true))
         end)
     end)
 end

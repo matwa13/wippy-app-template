@@ -23,14 +23,11 @@ local function flights_title(destination, origin, start_date, end_date)
     return string.format("Book flights — %s (%s – %s)", destination, start_date, end_date)
 end
 
-local function flights_notes(sky_url, origin_missing)
-    local lines = {}
-    if origin_missing then
-        table.insert(lines, "_Origin not provided — flight searches are destination-only._")
-        table.insert(lines, "")
+local function flights_notes(sky_url)
+    if sky_url and sky_url ~= "" then
+        return string.format("[Search on Skyscanner](%s)", sky_url)
     end
-    table.insert(lines, string.format("[Search on Skyscanner](%s)", sky_url))
-    return table.concat(lines, "\n")
+    return "_Flight search link unavailable — see trip warnings for details._"
 end
 
 local function packing_notes(packing)
@@ -74,8 +71,7 @@ local function build(ctx)
         title        = flights_title(ctx.destination, ctx.origin, ctx.start_date, ctx.end_date),
         scheduled_at = clamp_to_today(ctx.today, ctx.today),
         priority     = 3,
-        notes        = flights_notes(ctx.skyscanner_url,
-                                      not ctx.origin or ctx.origin == ""),
+        notes        = flights_notes(ctx.skyscanner_url),
     })
 
     -- Packing task (priority 2), only if non-empty

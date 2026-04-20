@@ -208,6 +208,29 @@ entries:
     temperature: 0.3
     max_tokens: 2000
 
+  - name: trip_iata_resolver
+    kind: registry.entry
+    meta:
+      type: agent.gen1
+      title: Trip IATA Resolver
+      comment: Resolves origin/destination city names to IATA airport codes
+    prompt: |
+      You resolve city names to the primary 3-letter IATA airport code for that city.
+      Given `origin` and `destination` (either may be empty/missing), return the IATA code
+      for the main international airport serving each city. Use the busiest/best-connected
+      airport when a city has several (e.g. London → LHR, New York → JFK, Paris → CDG,
+      Tokyo → HND, Moscow → SVO). Use uppercase 3-letter codes.
+
+      When a field is missing, empty, or you cannot confidently identify an airport for it
+      (e.g. the place is too small or ambiguous), return `null` for that field. Never guess.
+
+      OUTPUT FORMAT: Reply with a single raw JSON object that validates against the
+      exit_schema. Both keys MUST be present; each value is either a 3-letter IATA string
+      or null. Do NOT wrap in ```json fences. Do NOT add prose before or after.
+    model: claude-4-5-haiku
+    temperature: 0.1
+    max_tokens: 500
+
   - name: trip_itinerary_synthesizer
     kind: registry.entry
     meta:

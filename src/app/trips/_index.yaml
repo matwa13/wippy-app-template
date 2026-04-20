@@ -135,6 +135,16 @@ entries:
     pool:
       size: 2
 
+  - name: save_iata_resolver
+    kind: function.lua
+    source: file://flow/save_iata_resolver.lua
+    imports:
+      trip_repo: app.trips:trip_repo
+      trips_common: app.trips:trips_common
+    method: handler
+    pool:
+      size: 2
+
   - name: flights_linker
     kind: function.lua
     source: file://flow/flights_linker.lua

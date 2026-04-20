@@ -46,6 +46,16 @@ local packing_exit_schema = {
     },
 }
 
+local iata_exit_schema = {
+    type = "object",
+    required = { "origin_iata", "destination_iata" },
+    additionalProperties = false,
+    properties = {
+        origin_iata      = { type = { "string", "null" }, pattern = "^$|^[A-Za-z]{3}$" },
+        destination_iata = { type = { "string", "null" }, pattern = "^$|^[A-Za-z]{3}$" },
+    },
+}
+
 local itinerary_exit_schema = {
     type = "object",
     required = { "itinerary" },
@@ -91,12 +101,14 @@ local function build_and_start(input)
         -- fan out: each research/linker branch gets the normalized trip details.
         :to("attractions_research", "default")
         :to("packing_research", "default")
-        :to("flights_linker", "default")
+        :to("iata_resolver", "default")
         -- context fan out: trip_id/user_id never pass through agents because the
         -- agents' exit_schema uses additionalProperties:false, so deliver them
         -- to the join-gates that guard each persist/notify func.
         :to("save_attractions_gate", "context")
         :to("save_packing_gate", "context")
+        :to("save_iata_resolver_gate", "context")
+        :to("flights_linker_gate", "context")
         :to("save_itinerary_gate", "context")
         :to("build_task_payloads_gate", "context")
         :to("persist_tasks_gate", "context")
@@ -134,6 +146,29 @@ local function build_and_start(input)
 
         :func("app.trips:save_packing"):as("save_packing")
         :to("join", "packing")
+
+        :agent("app.agents:trip_iata_resolver", {
+            arena = {
+                max_iterations = 2,
+                exit_schema = iata_exit_schema,
+            },
+        }):as("iata_resolver")
+        :to("save_iata_resolver_gate", "default")
+
+        :join({
+            inputs = { required = { "default", "context" } },
+            output_mode = "object",
+        }):as("save_iata_resolver_gate")
+        :to("save_iata_resolver", "default")
+
+        :func("app.trips:save_iata_resolver"):as("save_iata_resolver")
+        :to("flights_linker_gate", "default")
+
+        :join({
+            inputs = { required = { "default", "context" } },
+            output_mode = "object",
+        }):as("flights_linker_gate")
+        :to("flights_linker", "default")
 
         :func("app.trips:flights_linker"):as("flights_linker")
         :to("join", "flights")

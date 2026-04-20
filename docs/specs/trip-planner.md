@@ -21,7 +21,7 @@ The feature has two entry points — a chat tool and a web form — and a dedica
 - **Concurrent sibling DAG, not `parallel()`.** `parallel()` is strictly for array fan-out. Three heterogeneous research branches (attractions, packing, flights) are modelled as three sibling nodes with a shared upstream.
 - **Structured agent outputs.** All four workflow agents use `arena.exit_schema`; the itinerary synthesizer additionally uses `arena.exit_func_id` for cross-input-output validation. Prompt-level JSON instructions are kept as *complementary*, not sufficient.
 - **`workflow_state` vs `plan_json` are strictly separate** (see §7). Technical execution state and user-facing plan content never mix columns.
-- **Flights via deep-links only for MVP.** No external API; `flights_linker` is a pure Lua func that builds a Skyscanner search URL. Real API integration is future work.
+- **Flights via deep-links only for MVP.** No external API. A small LLM node (`iata_resolver`) resolves origin/destination city names to IATA airport codes; `flights_linker` is a pure Lua func that turns those codes + dates into a Skyscanner deep-link. The resolver is non-critical — unresolved codes degrade to a warning instead of a link. Real API integration is future work.
 - **Live UI via `trips:changed` hub events**, same pattern as the existing `tasks:changed` event from the task agent.
 
 ---
@@ -82,12 +82,12 @@ Tasks without `trip_id` retain existing standalone behaviour.
 ### DAG
 
 ```
-normalize_input ──┬── attractions_researcher ─┐
-  (func)          │   (agent)                 │
-                  ├── packing_researcher ─────┼── cycle { synthesize → critique } ── build_task_payloads ── persist_tasks
-                  │   (agent)                 │   (≤ 2 iterations)                   (func)                (func)
-                  └── flights_linker ─────────┘
-                      (func)
+normalize_input ──┬── attractions_researcher ─────────────┐
+  (func)          │   (agent)                             │
+                  ├── packing_researcher ─────────────────┼── cycle { synthesize → critique } ── build_task_payloads ── persist_tasks
+                  │   (agent)                             │   (≤ 2 iterations)                   (func)                (func)
+                  └── iata_resolver ── flights_linker ────┘
+                      (agent)          (func)
 ```
 
 Defined in `src/app/trips/flow/trip_flow.lua` via `flow.create():with_input(trip_context):start()`. The returned workflow ID is written to `trips.workflow_id`.
@@ -101,7 +101,8 @@ The critic cycle's template contains two agent nodes — `itinerary_synthesizer`
 | `normalize_input`            | func              | Canonicalize destination, resolve dates, compute `duration_days` + `season`, default origin. Deterministic, no LLM. | yes |
 | `attractions_researcher`     | agent             | Research only. Returns bounded list (≤12) of places as `[{name, description, typical_duration_hours, constraints[]}]`. No scheduling. | yes |
 | `packing_researcher`         | agent             | Climate/season-aware packing list as `[{category, items[]}]`.                | **no** (failure → warning) |
-| `flights_linker`             | func              | Builds a Skyscanner deep-link. Emits warning if origin missing. Always succeeds. | yes (but tolerant) |
+| `iata_resolver`              | agent             | Resolves origin + destination city names to IATA airport codes. Returns `null` for fields it can't confidently resolve. | **no** (failure or null → warning, no link) |
+| `flights_linker`             | func              | Builds a Skyscanner deep-link from IATA codes + dates. Emits warning if either code is missing. Always succeeds. | yes (but tolerant) |
 | **critic cycle**             | **cycle**         | Wraps `itinerary_synthesizer` + `itinerary_critic`. `max_iterations = 2`. Exits on critic `status="ok"` or max reached. | — |
 | &nbsp;&nbsp;↳ `itinerary_synthesizer` | agent (in cycle) | Planning decisions: selects attractions + schedules them by day/slot, respecting arrival/departure load rules. Receives prior iteration's critic feedback when present. | yes |
 | &nbsp;&nbsp;↳ `itinerary_critic`      | agent (in cycle) | Reviews itinerary, emits structured `{status, issues[]}` output.              | no (failure → exit cycle, proceed) |
@@ -129,6 +130,7 @@ All workflow agents use structured exit output. Prompt-level "output JSON" instr
 |----------------------------|---------------|--------------------------------|------------------------|
 | `trip_attractions_researcher` | yes        | —                              | 3                      |
 | `trip_packing_researcher`     | yes        | —                              | 3                      |
+| `trip_iata_resolver`          | yes        | —                              | 2                      |
 | `trip_itinerary_synthesizer`  | yes        | `app:validate_synthesizer_exit` | 4                     |
 | `trip_itinerary_critic`       | yes        | —                              | 3                      |
 
@@ -192,6 +194,7 @@ Initial value on trip creation:
     "normalize_input":      { "status": "pending" },
     "attractions_research": { "status": "pending" },
     "packing_research":     { "status": "pending" },
+    "iata_resolver":        { "status": "pending" },
     "flights_linker":       { "status": "pending" },
     "itinerary_synthesize": { "status": "pending" },
     "itinerary_critic":     { "status": "pending", "iterations": 0 },
@@ -279,11 +282,11 @@ Three new routes added to `frontend/applications/main/` (Vue Router, memory hist
 ### `TripDetailPage.vue` layout (top to bottom)
 
 1. **Header** — destination + dates + status badge (`planning` / `ready` / `partial` / `failed`), link back to `/trips`.
-2. **Workflow panel** — compact list of the 8 nodes with live status dots (pending ⚪ / running ⏳ / done ✅ / failed ❌). Critic node shows iteration count while running. Collapsible; pinned open while `status=planning`, collapsed by default once `ready`.
+2. **Workflow panel** — compact list of the 9 nodes with live status dots (pending ⚪ / running ⏳ / done ✅ / failed ❌). Critic node shows iteration count while running. Collapsible; pinned open while `status=planning`, collapsed by default once `ready`.
 3. **Warnings banner** — rendered when `plan_json.warnings[]` is non-empty.
 4. **Attractions** — card list; appears once `attractions_research` done.
 5. **Packing** — category accordion; appears once `packing_research` done, or a "Packing list unavailable" placeholder if it failed.
-6. **Flights** — a Skyscanner button opening in new tab; appears once `flights_linker` done.
+6. **Flights** — a Skyscanner button opening in new tab; appears once `flights_linker` done. If IATA resolution failed (for either endpoint), a "Flight search unavailable" placeholder with the warning is shown instead.
 7. **Itinerary** — day-by-day timeline; appears once `itinerary_synthesize` done and refreshes on each critic iteration.
 8. **Generated tasks** — simple list linking to `/tasks`; appears once `persist_tasks` done.
 
@@ -311,7 +314,7 @@ wippy.on('trips:changed', ({ trip_id }) => {
   ```
   [Search on Skyscanner](<skyscanner_url>)
   ```
-  If origin is missing, the origin-missing warning is prepended.
+  If origin is missing or IATA resolution failed, the corresponding warning is prepended and the Skyscanner link is omitted.
 
 **2. Packing task** (created only if `packing_research` succeeded)
 

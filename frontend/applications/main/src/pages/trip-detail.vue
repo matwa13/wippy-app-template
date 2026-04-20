@@ -40,6 +40,7 @@ const NODE_ORDER: Array<{ key: string, label: string }> = [
   { key: 'normalize_input',      label: 'Normalize input' },
   { key: 'attractions_research', label: 'Attractions research' },
   { key: 'packing_research',     label: 'Packing research' },
+  { key: 'iata_resolver',        label: 'Resolve airports' },
   { key: 'flights_linker',       label: 'Flights' },
   { key: 'itinerary_synthesize', label: 'Itinerary synthesize' },
   { key: 'build_task_payloads',  label: 'Build task payloads' },
@@ -207,6 +208,7 @@ const panelOpen = ref(true)
         class="flex gap-2"
       >
         <a
+          v-if="trip.plan_json.flights.skyscanner_url"
           :href="trip.plan_json.flights.skyscanner_url"
           target="_blank"
           rel="noopener"
@@ -222,6 +224,12 @@ const panelOpen = ref(true)
             /></template>
           </Button>
         </a>
+        <div
+          v-else
+          class="text-xs text-surface-500 italic"
+        >
+          Flight search unavailable — see warnings above.
+        </div>
       </section>
 
       <section v-if="trip.plan_json?.itinerary?.length">
