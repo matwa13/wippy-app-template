@@ -31,7 +31,7 @@ export interface PlanJson {
     constraints: string[]
   }>
   packing?: Array<{ category: string, items: string[] }>
-  flights?: { google_flights_url: string, skyscanner_url: string }
+  flights?: { skyscanner_url: string }
   itinerary?: Array<{
     date: string
     attraction_name: string

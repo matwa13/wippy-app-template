@@ -207,22 +207,6 @@ const panelOpen = ref(true)
         class="flex gap-2"
       >
         <a
-          :href="trip.plan_json.flights.google_flights_url"
-          target="_blank"
-          rel="noopener"
-        >
-          <Button
-            label="Google Flights"
-            size="small"
-            severity="secondary"
-          >
-            <template #icon><Icon
-              icon="tabler:plane"
-              class="w-4 h-4"
-            /></template>
-          </Button>
-        </a>
-        <a
           :href="trip.plan_json.flights.skyscanner_url"
           target="_blank"
           rel="noopener"

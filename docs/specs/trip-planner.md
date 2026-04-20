@@ -21,7 +21,7 @@ The feature has two entry points — a chat tool and a web form — and a dedica
 - **Concurrent sibling DAG, not `parallel()`.** `parallel()` is strictly for array fan-out. Three heterogeneous research branches (attractions, packing, flights) are modelled as three sibling nodes with a shared upstream.
 - **Structured agent outputs.** All four workflow agents use `arena.exit_schema`; the itinerary synthesizer additionally uses `arena.exit_func_id` for cross-input-output validation. Prompt-level JSON instructions are kept as *complementary*, not sufficient.
 - **`workflow_state` vs `plan_json` are strictly separate** (see §7). Technical execution state and user-facing plan content never mix columns.
-- **Flights via deep-links only for MVP.** No external API; `flights_linker` is a pure Lua func that builds Google Flights + Skyscanner search URLs. Real API integration is future work.
+- **Flights via deep-links only for MVP.** No external API; `flights_linker` is a pure Lua func that builds a Skyscanner search URL. Real API integration is future work.
 - **Live UI via `trips:changed` hub events**, same pattern as the existing `tasks:changed` event from the task agent.
 
 ---
@@ -101,7 +101,7 @@ The critic cycle's template contains two agent nodes — `itinerary_synthesizer`
 | `normalize_input`            | func              | Canonicalize destination, resolve dates, compute `duration_days` + `season`, default origin. Deterministic, no LLM. | yes |
 | `attractions_researcher`     | agent             | Research only. Returns bounded list (≤12) of places as `[{name, description, typical_duration_hours, constraints[]}]`. No scheduling. | yes |
 | `packing_researcher`         | agent             | Climate/season-aware packing list as `[{category, items[]}]`.                | **no** (failure → warning) |
-| `flights_linker`             | func              | Builds Google Flights + Skyscanner deep-links. Emits warning if origin missing. Always succeeds. | yes (but tolerant) |
+| `flights_linker`             | func              | Builds a Skyscanner deep-link. Emits warning if origin missing. Always succeeds. | yes (but tolerant) |
 | **critic cycle**             | **cycle**         | Wraps `itinerary_synthesizer` + `itinerary_critic`. `max_iterations = 2`. Exits on critic `status="ok"` or max reached. | — |
 | &nbsp;&nbsp;↳ `itinerary_synthesizer` | agent (in cycle) | Planning decisions: selects attractions + schedules them by day/slot, respecting arrival/departure load rules. Receives prior iteration's critic feedback when present. | yes |
 | &nbsp;&nbsp;↳ `itinerary_critic`      | agent (in cycle) | Reviews itinerary, emits structured `{status, issues[]}` output.              | no (failure → exit cycle, proceed) |
@@ -207,7 +207,7 @@ Describes *what* the trip plan contains. The output of the workflow from the use
 
 - `attractions[]` — from `trip_attractions_researcher`
 - `packing[]` — from `trip_packing_researcher` (empty if that branch failed)
-- `flights{google_flights_url, skyscanner_url}` — from `flights_linker`
+- `flights{skyscanner_url}` — from `flights_linker`
 - `itinerary[]` — from `trip_itinerary_synthesizer`, replaced on each critic iteration
 - `warnings[]` — user-facing degradation messages ("Origin not provided", "Packing list unavailable"), because the user needs to see them alongside the content they qualify
 
@@ -283,7 +283,7 @@ Three new routes added to `frontend/applications/main/` (Vue Router, memory hist
 3. **Warnings banner** — rendered when `plan_json.warnings[]` is non-empty.
 4. **Attractions** — card list; appears once `attractions_research` done.
 5. **Packing** — category accordion; appears once `packing_research` done, or a "Packing list unavailable" placeholder if it failed.
-6. **Flights** — two buttons (Google Flights, Skyscanner) opening in new tab; appears once `flights_linker` done.
+6. **Flights** — a Skyscanner button opening in new tab; appears once `flights_linker` done.
 7. **Itinerary** — day-by-day timeline; appears once `itinerary_synthesize` done and refreshes on each critic iteration.
 8. **Generated tasks** — simple list linking to `/tasks`; appears once `persist_tasks` done.
 
@@ -309,7 +309,6 @@ wippy.on('trips:changed', ({ trip_id }) => {
 - `scheduled_at`: **today**. MVP assumption: booking should happen as soon as possible after trip creation. A date-aware rule (e.g., "schedule booking reminder for N weeks before departure") is future work.
 - Notes (markdown):
   ```
-  [Search on Google Flights](<google_flights_url>)
   [Search on Skyscanner](<skyscanner_url>)
   ```
   If origin is missing, the origin-missing warning is prepended.

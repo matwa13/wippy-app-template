@@ -13,7 +13,7 @@ local function define_tests()
                 origin         = "Berlin",
                 start_date     = "2026-05-01",
                 end_date       = "2026-05-07",
-                google_flights_url = "https://g", skyscanner_url = "https://s",
+                skyscanner_url = "https://s",
                 packing = { { category = "Clothing", items = { "shirt", "pants" } } },
                 itinerary = {
                     { date = "2026-05-02", attraction_name = "Senso-ji",
@@ -38,7 +38,7 @@ local function define_tests()
                 today = FIXED_TODAY, trip_id = "t2",
                 destination = "Rome", origin = "Paris",
                 start_date = "2026-06-01", end_date = "2026-06-05",
-                google_flights_url = "", skyscanner_url = "",
+                skyscanner_url = "",
                 packing = nil,
                 itinerary = {
                     { date = "2026-06-02", attraction_name = "Colosseum",
@@ -60,7 +60,7 @@ local function define_tests()
                 today = FIXED_TODAY, trip_id = "t3",
                 destination = "Rome", origin = "Paris",
                 start_date = "2026-06-01", end_date = "2026-06-05",
-                google_flights_url = "a", skyscanner_url = "b",
+                skyscanner_url = "b",
                 packing = { { category = "c", items = { "x" } } },
                 itinerary = {},
             })
@@ -73,7 +73,7 @@ local function define_tests()
                 today = FIXED_TODAY, trip_id = "t4",
                 destination = "Rome", origin = "Paris",
                 start_date = "2026-04-17", end_date = "2026-04-20",
-                google_flights_url = "a", skyscanner_url = "b",
+                skyscanner_url = "b",
                 packing = { { category = "c", items = { "x" } } },
                 itinerary = {
                     { date = "2026-04-17", attraction_name = "Colosseum",
@@ -91,7 +91,7 @@ local function define_tests()
                 today = FIXED_TODAY, trip_id = "t5",
                 destination = "Rome", origin = nil,
                 start_date = "2026-05-01", end_date = "2026-05-05",
-                google_flights_url = "a", skyscanner_url = "b",
+                skyscanner_url = "b",
                 packing = nil,
                 itinerary = { { date = "2026-05-01", attraction_name = "Colosseum",
                                 description = "", time_slot = "morning",
