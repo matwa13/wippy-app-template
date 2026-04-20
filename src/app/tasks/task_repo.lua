@@ -102,11 +102,11 @@ local function update(user_id, id, fields)
     end
     if fields.notes ~= nil then
         table.insert(sets, "notes = ?")
-        table.insert(args, fields.notes ~= "" and fields.notes or nil)
+        table.insert(args, fields.notes ~= "" and fields.notes or sql.NULL)
     end
     if fields.due_date ~= nil then
         table.insert(sets, "due_date = ?")
-        table.insert(args, fields.due_date ~= "" and fields.due_date or nil)
+        table.insert(args, fields.due_date ~= "" and fields.due_date or sql.NULL)
     end
     if fields.priority ~= nil then
         table.insert(sets, "priority = ?")

@@ -9,10 +9,12 @@ import SelectButton from 'primevue/selectbutton'
 import Select from 'primevue/select'
 import DatePicker from 'primevue/datepicker'
 import Textarea from 'primevue/textarea'
+import Dialog from 'primevue/dialog'
 import { useApi, useHost, useWippy } from '../composables/useWippy'
 import { useTasksStore } from '../stores/tasks'
 import type { Task } from '../stores/tasks'
 import MarkdownNotes from '../components/MarkdownNotes.vue'
+import TaskForm, { type TaskFormPayload } from '../components/TaskForm.vue'
 
 const api = useApi()
 const host = useHost()
@@ -152,6 +154,68 @@ const deleteMutation = useMutation({
 
 function removeTask(task: Task) {
   deleteMutation.mutate(task)
+}
+
+const editingTask = ref<Task | null>(null)
+
+function startEdit(task: Task) {
+  editingTask.value = task
+}
+
+function cancelEdit() {
+  editingTask.value = null
+}
+
+interface UpdateVars {
+  id: string
+  body: Record<string, unknown>
+  patch: Partial<Task>
+}
+
+const updateMutation = useMutation<unknown, Error, UpdateVars, { previous?: Task[] }>({
+  mutationFn: async ({ id, body }) => {
+    const { data } = await api.patch(`/api/v1/tasks/${id}`, body)
+    return data
+  },
+  onMutate: async ({ id, patch }) => {
+    await queryClient.cancelQueries({ queryKey: TASKS_KEY })
+    const previous = queryClient.getQueryData<Task[]>(TASKS_KEY)
+    queryClient.setQueryData<Task[]>(TASKS_KEY, (old) => {
+      if (!old) return old
+      return old.map(t => t.id === id ? { ...t, ...patch } : t)
+    })
+    return { previous }
+  },
+  onError: (_err, _vars, ctx) => {
+    if (ctx?.previous) queryClient.setQueryData(TASKS_KEY, ctx.previous)
+    host.toast({ severity: 'error', summary: 'Failed to update task' })
+  },
+  onSettled: () => {
+    queryClient.invalidateQueries({ queryKey: TASKS_KEY })
+  },
+})
+
+function handleEditSubmit(payload: TaskFormPayload) {
+  if (!editingTask.value) return
+  const id = editingTask.value.id
+  updateMutation.mutate({
+    id,
+    body: {
+      title: payload.title,
+      done: payload.done,
+      priority: payload.priority,
+      due_date: payload.due_date ?? '',
+      notes: payload.notes,
+    },
+    patch: {
+      title: payload.title,
+      done: payload.done,
+      priority: payload.priority,
+      due_date: payload.due_date,
+      notes: payload.notes || null,
+    },
+  })
+  editingTask.value = null
 }
 </script>
 
@@ -359,6 +423,21 @@ function removeTask(task: Task) {
             <Button
               text
               rounded
+              class="!p-1.5 opacity-0 group-hover:opacity-100 transition-opacity"
+              :aria-label="`Edit ${task.title}`"
+              @click="startEdit(task)"
+            >
+              <template #icon>
+                <Icon
+                  icon="tabler:pencil"
+                  class="w-4 h-4 text-surface-400"
+                  aria-hidden="true"
+                />
+              </template>
+            </Button>
+            <Button
+              text
+              rounded
               severity="danger"
               class="!p-1.5 opacity-0 group-hover:opacity-100 transition-opacity"
               :aria-label="`Delete ${task.title}`"
@@ -398,5 +477,23 @@ function removeTask(task: Task) {
         </div>
       </div>
     </div>
+
+    <Dialog
+      :visible="!!editingTask"
+      modal
+      header="Edit task"
+      :style="{ width: '32rem' }"
+      :closable="!updateMutation.isPending.value"
+      :dismissable-mask="!updateMutation.isPending.value"
+      @update:visible="(v) => { if (!v) cancelEdit() }"
+    >
+      <TaskForm
+        v-if="editingTask"
+        :initial="editingTask"
+        :loading="updateMutation.isPending.value"
+        @submit="handleEditSubmit"
+        @cancel="cancelEdit"
+      />
+    </Dialog>
   </div>
 </template>
