@@ -12,6 +12,7 @@ import Textarea from 'primevue/textarea'
 import { useApi, useHost, useWippy } from '../composables/useWippy'
 import { useTasksStore } from '../stores/tasks'
 import type { Task } from '../stores/tasks'
+import MarkdownNotes from '../components/MarkdownNotes.vue'
 
 const api = useApi()
 const host = useHost()
@@ -374,9 +375,9 @@ function removeTask(task: Task) {
           </div>
           <div
             v-if="task.notes && expandedNotes.includes(task.id)"
-            class="px-5 pb-3 ml-9 text-sm text-surface-500 dark:text-surface-400 whitespace-pre-wrap"
+            class="px-5 pb-3 ml-9 text-sm text-surface-500 dark:text-surface-400"
           >
-            {{ task.notes }}
+            <MarkdownNotes :source="task.notes" />
           </div>
         </li>
       </ul>

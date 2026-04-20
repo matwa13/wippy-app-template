@@ -48,11 +48,15 @@
     "lint:fix": "eslint src --ext .ts,.vue --fix"
   },
   "dependencies": {
-    "@wippy-fe/theme": "^0.0.20"
+    "@wippy-fe/theme": "^0.0.20",
+    "markdown-it": "^14.1.0",
+    "sanitize-html": "^2.14.0"
   },
   "devDependencies": {
     "@tanstack/query-core": "^5.90.20",
     "@tanstack/vue-query": "^5.92.9",
+    "@types/markdown-it": "^14.1.0",
+    "@types/sanitize-html": "^2.13.0",
     "@typescript-eslint/eslint-plugin": "^7.0.0",
     "@typescript-eslint/parser": "^7.0.0",
     "@vitejs/plugin-vue": "^5.0.0",
