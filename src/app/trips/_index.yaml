@@ -229,6 +229,35 @@ entries:
     pool:
       size: 2
 
+  # --- Startup recovery ---
+  - name: resume_planning
+    kind: process.lua
+    meta:
+      comment: Startup function that respawns dataflow orchestrators for planning trips
+    source: file://resume_planning.lua
+    imports:
+      df_client: userspace.dataflow:client
+    method: run
+    modules:
+      - sql
+      - logger
+
+  - name: resume_planning.service
+    kind: process.service
+    meta:
+      comment: Resume in-flight trip workflows after server restart
+    host: app:processes
+    lifecycle:
+      auto_start: true
+      restart:
+        initial_delay: 1s
+      security:
+        actor:
+          id: system.trip_resume
+        groups:
+          - wippy.security:process
+    process: resume_planning
+
   # --- Agent tools ---
   - name: plan_trip
     kind: function.lua

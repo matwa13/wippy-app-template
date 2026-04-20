@@ -24,7 +24,7 @@ entries:
 
       If the user asks to see or open a specific page, use NavigateTo.
       Be concise and helpful.
-    model: claude-4-5-sonnet
+    model: claude-4-5-haiku
     temperature: 0.5
     max_tokens: 8000
     traits:
@@ -187,7 +187,7 @@ entries:
       OUTPUT FORMAT: Reply with a single raw JSON object that validates against the exit_schema.
       Do NOT wrap it in ```json code fences. Do NOT add any prose before or after the object.
       Do NOT emit <search> or similar tags. The entire response body must be the JSON object.
-    model: claude-4-5-sonnet
+    model: claude-4-5-haiku
     temperature: 0.3
     max_tokens: 4000
 
@@ -254,6 +254,6 @@ entries:
       OUTPUT FORMAT: Reply with a single raw JSON object that validates against the exit_schema.
       Do NOT wrap it in ```json code fences. Do NOT add prose before or after. The entire
       response body must be the JSON object.
-    model: claude-4-5-sonnet
+    model: claude-4-5-haiku
     temperature: 0.4
     max_tokens: 4000
