@@ -18,7 +18,7 @@ The feature has two entry points — a chat tool and a web form — and a dedica
 - **Chat-first clarification (Option A).** The Wippy agent collects missing info conversationally; the workflow itself runs straight through without pausing. The `plan_trip` tool's required args enforce this contract.
 - **Two entry points, one workflow.** Chat tool and form both POST to the same endpoint; same dataflow graph runs either way.
 - **Trip is a first-class entity.** New `trips` table with its own pages. Tasks get a nullable `trip_id` FK.
-- **Concurrent sibling DAG, not `parallel()`.** `parallel()` is strictly for array fan-out. Three heterogeneous research branches (attractions, packing, flights) are modelled as three sibling nodes with a shared upstream.
+- **Concurrent sibling DAG, not `parallel()`.** `parallel()` is strictly for array fan-out. Three heterogeneous research branches (attractions, packing, IATA-resolver → flights-linker) fan out from `normalize_input` and re-converge at the central `join` before synthesis.
 - **Join-gated "save-after-each-agent" pattern.** Agent outputs use `additionalProperties:false` exit schemas, which strip any trip context passed through them. To give each persistence step access to both the agent's output and `{trip_id, user_id}`, every persistence `func` is preceded by a `:join()` that merges the agent output (on the `default` discriminator) with a `context` edge fanned out directly from `normalize_input`. The same pattern guards the downstream `flights_linker`, `build_task_payloads`, and `persist_tasks` nodes.
 - **Structured agent outputs.** All workflow agents use `arena.exit_schema`; prompt-level JSON instructions are kept as *complementary*, not sufficient.
 - **`workflow_state` vs `plan_json` are strictly separate** (see §7). Technical execution state and user-facing plan content never mix columns.
@@ -140,7 +140,7 @@ The flow is strictly linear once synthesis begins: the three research branches f
 | `attractions_research`       | agent             | Research only. Returns bounded list (6–12) of places as `[{name, description, typical_duration_hours, constraints[]}]`. No scheduling. | yes |
 | `save_attractions`           | func              | Writes agent output to `plan_json.attractions`, marks node done in `workflow_state`, notifies hub. Preceded by `save_attractions_gate` join. | yes |
 | `packing_research`           | agent             | Climate/season-aware packing list as `[{category, items[]}]`.                | **no** (failure → warning) |
-| `save_packing`               | func              | Writes agent output to `plan_json.packing`; on empty/failed output logs a warning instead. Preceded by `save_packing_gate` join. | no (tolerant) |
+| `save_packing`               | func              | Writes agent output to `plan_json.packing`; on empty output appends a warning, marks the node `failed`, and returns `{}` so downstream still proceeds. Preceded by `save_packing_gate` join. | no (tolerant) |
 | `iata_resolver`              | agent             | Resolves origin + destination city names to IATA airport codes. Returns `null` for fields it can't confidently resolve. | **no** (failure or null → warning, no link) |
 | `save_iata_resolver`         | func              | Persists IATA codes on `plan_json` and forwards them to `flights_linker`. Preceded by `save_iata_resolver_gate` join. | no (tolerant) |
 | `flights_linker`             | func              | Builds a Skyscanner deep-link from IATA codes + dates. Emits warning if either code is missing. Always succeeds. Preceded by `flights_linker_gate` join. | yes (but tolerant) |
@@ -148,7 +148,7 @@ The flow is strictly linear once synthesis begins: the three research branches f
 | `itinerary_synthesize`       | agent             | Planning decisions: selects attractions + schedules them by day/slot, respecting arrival/departure load rules. | yes |
 | `save_itinerary`             | func              | Writes itinerary to `plan_json.itinerary`, marks node done; fails the workflow if the itinerary is empty. Preceded by `save_itinerary_gate` join. | yes |
 | `build_task_payloads`        | func              | Pure plan→rows transformation. Unit-testable without DB. Preceded by `build_task_payloads_gate` join that collects: itinerary (`default`), research results (`support`), trip context (`context`). | yes |
-| `persist_tasks`              | func              | Writes tasks via `task_repo` in one transaction; fires `tasks:changed`. Preceded by `persist_tasks_gate` join. | yes |
+| `persist_tasks`              | func              | Writes tasks via `task_repo.create_with_trip` (one row per call, not a wrapping transaction). After the loop reads `workflow_state.nodes.packing_research.status` to decide between `ready` and `partial`. Sets the trip status, fires both `trips:changed` and `tasks:changed`. Preceded by `persist_tasks_gate` join. | yes |
 
 ### Naming convention: node keys vs agent IDs
 
@@ -176,6 +176,8 @@ All workflow agents use structured exit output. Prompt-level "output JSON" instr
 
 `arena.max_iterations` is the agent's in-node self-repair budget when its output fails `exit_schema`; each retry feeds the validation error back as an observation.
 
+All four agents currently run on `claude-4-5-haiku` (low temperature for the IATA resolver and researchers, slightly higher for the synthesizer). Models can be swapped per-agent in `src/app/agents/_index.yaml` without touching the flow.
+
 ### Files
 
 ```
@@ -184,9 +186,10 @@ src/app/trips/
   migrations/
     01_init.lua                  -- trips table
     02_tasks_fields.lua          -- tasks.trip_id + tasks.scheduled_at
-  trip_repo.lua                  -- CRUD + workflow_state / plan_json update helpers
+  trip_repo.lua                  -- CRUD + workflow_state / plan_json update helpers + cascade delete
   trip_service.lua               -- shared service layer: create_trip used by HTTP + tool
   trips_common.lua               -- hub notify + small helpers shared across flow nodes
+  resume_planning.lua            -- auto-start service: respawns dataflow orchestrators after restart (see §11)
   api/                           -- HTTP handlers
     create_trip.lua              -- POST   /api/v1/trips
     list_trips.lua               -- GET    /api/v1/trips
@@ -206,7 +209,7 @@ src/app/trips/
     persist_tasks.lua            -- func: writes tasks, fires tasks:changed
 ```
 
-Agents are defined in `src/app/agents/_index.yaml` following the project convention.
+Agents are defined in `src/app/agents/_index.yaml` following the project convention. The `trips_trait` (also in `agents/_index.yaml`) is attached to the existing Wippy agent and exposes the `PlanTrip` tool.
 
 ---
 
@@ -245,10 +248,10 @@ Initial value on trip creation:
 Describes *what* the trip plan contains. The output of the workflow from the user's perspective.
 
 - `attractions[]` — from `trip_attractions_researcher`
-- `packing[]` — from `trip_packing_researcher` (empty if that branch failed)
-- `flights{skyscanner_url, origin_iata, destination_iata}` — from `save_iata_resolver` + `flights_linker`
+- `packing[]` — from `trip_packing_researcher`. **Omitted** when the packing branch returns an empty list (the section is simply absent from `plan_json` rather than written as `[]`).
+- `flights{skyscanner_url}` — written by `flights_linker` once it runs. Always written so the UI can distinguish "linker hasn't run yet" (no `flights` key) from "linker ran, no link" (`flights = { skyscanner_url = nil }`). The IATA codes themselves are **not** persisted into `plan_json` today — they only flow through the join edge between `save_iata_resolver` and `flights_linker`.
 - `itinerary[]` — from `trip_itinerary_synthesizer`, written once by `save_itinerary`
-- `warnings[]` — user-facing degradation messages ("Origin not provided", "Packing list unavailable"), because the user needs to see them alongside the content they qualify
+- `warnings[]` — user-facing degradation messages (e.g. "Packing list unavailable — continuing without it.", "Origin airport could not be resolved — flight search link unavailable."), shown in the warnings banner on the trip detail page so the user sees them alongside the content they qualify
 
 ### Invariants
 
@@ -280,18 +283,17 @@ All routes under the authenticated `api` router (token required). Handlers in `s
   ```
   Returns `{ "trip_id": "…", "url": "/app/trips/…" }`.
 
-- `GET /api/v1/trips?filter=all|planning|ready|failed` — list current user's trips.
-  Returns `[{ id, destination, start_date, end_date, status, updated_at }]`.
+- `GET /api/v1/trips?filter=all|planning|ready|partial|failed` — list current user's trips.
+  Returns `{ success: true, trips: [{ id, user_id, title, destination, origin, start_date, end_date, status, workflow_id, created_at, updated_at }] }`. The filter value passes straight through as a `status = ?` predicate; unknown values silently produce an empty list.
 
 - `GET /api/v1/trips/:id` — full trip detail.
-  Returns `{ id, destination, origin, start_date, end_date, status, workflow_state, plan_json, tasks }`.
+  Returns `{ success: true, trip: { id, user_id, title, destination, origin, start_date, end_date, status, workflow_id, workflow_state, plan_json, created_at, updated_at, tasks: [...] } }`. `tasks` is loaded inline from the `tasks` table (`trip_id = :id`) ordered by `scheduled_at` then `created_at`.
 
-- `DELETE /api/v1/trips/:id` — remove the trip and cascade-delete its tasks.
-  Returns `{ "ok": true }`. The frontend detail page redirects back to `/trips` on success.
+- `DELETE /api/v1/trips/:id` — remove the trip and cascade-delete its tasks in one transaction. Returns `{ success: true, tasks_deleted: N }`. **Refuses with `409 Conflict` (`trip_in_progress`) while `status = 'planning'`** to avoid yanking rows out from under an in-flight workflow. The frontend detail page disables the delete button while planning and redirects back to `/trips` on success.
 
 Both the HTTP create handler and the `PlanTrip` chat tool delegate to a single service function (`trip_service.create_trip(user_id, input)` in `src/app/trips/trip_service.lua`) that inserts the row, kicks off the workflow, and returns `{trip_id, url}`. Each caller adapts the service result to its own medium — the HTTP handler formats a JSON response, the tool formats a tool-result payload. No internal HTTP round-trip.
 
-**Out of MVP:** `PATCH`, `POST /retry` — see §11.
+**Out of MVP:** `PATCH /api/v1/trips/:id` (manual edits) and `POST /api/v1/trips/:id/retry` (restart a failed workflow with the same input). See "Out of scope" under §13 MVP Scope.
 
 ---
 
@@ -307,26 +309,28 @@ Fired from the backend whenever any part of a trip row changes — workflow stat
 
 ## Frontend
 
-Three new routes added to `frontend/applications/main/` (Vue Router, memory history).
+Three new routes added to `frontend/applications/main/` (Vue Router, memory history). Trips do **not** get their own `view.page` entry in `src/app/views/_index.yaml` — they live inside the existing `main` view at `/app`. The "Trips" sidebar entry is registered in `frontend/applications/main/src/app/app.vue` (`navItems`) with `activePrefix: 'trip'` so the detail route also highlights the parent.
 
 | Route             | Component              | Purpose                                                         |
 |-------------------|------------------------|-----------------------------------------------------------------|
-| `/trips`          | `TripsListPage.vue`    | Paginated list, status filter, "+ New Trip" button              |
-| `/trips/create`   | `TripCreatePage.vue`   | Form; submit → POST → navigate to detail                        |
-| `/trips/:id`      | `TripDetailPage.vue`   | Live view (see below)                                           |
+| `/trips`          | `pages/trips-list.vue` | Status-filtered list, "New Trip" button                         |
+| `/trips/create`   | `pages/trips-create.vue` | Form; submit → POST → navigate to detail                      |
+| `/trips/:id`      | `pages/trip-detail.vue`| Live view (see below)                                           |
 
-`views/_index.yaml` gets a new `view.page` entry to register the feature with the host so "Trips" appears in the sidebar nav.
+The Pinia store at `stores/trips.ts` holds the cached trip list (persisted via `wippyPersist`) and exports the `TripSummary` / `TripDetail` / `WorkflowState` / `NodeState` / `PlanJson` types reused by the pages.
 
-### `TripDetailPage.vue` layout (top to bottom)
+### `trip-detail.vue` layout (top to bottom)
 
-1. **Header** — destination + dates + status badge (`planning` / `ready` / `partial` / `failed`), link back to `/trips`, delete button.
-2. **Workflow panel** — compact list of the 8 tracked nodes with live status dots (pending ⚪ / running ⏳ / done ✅ / failed ❌). Collapsible; pinned open while `status=planning`, collapsed by default once `ready`.
+1. **Header** — title + dates + status badge (`planning` / `ready` / `partial` / `failed`), back arrow to `/trips`, delete button. Delete is disabled while `status = 'planning'` (mirrors the backend `409 trip_in_progress` guard).
+2. **Workflow panel** — collapsible list of the 8 tracked nodes (`normalize_input`, `attractions_research`, `packing_research`, `iata_resolver`, `flights_linker`, `itinerary_synthesize`, `build_task_payloads`, `persist_tasks`) with live status icons (⚪ pending / ⏳ running / ✅ done / ❌ failed) and inline error text when present. Open by default.
 3. **Warnings banner** — rendered when `plan_json.warnings[]` is non-empty.
-4. **Attractions** — card list; appears once `attractions_research` done.
-5. **Packing** — category accordion; appears once `packing_research` done, or a "Packing list unavailable" placeholder if it failed.
-6. **Flights** — a Skyscanner button opening in new tab; appears once `flights_linker` done. If IATA resolution failed (for either endpoint), a "Flight search unavailable" placeholder with the warning is shown instead.
-7. **Itinerary** — day-by-day timeline; appears once `itinerary_synthesize` done.
-8. **Generated tasks** — simple list linking to `/tasks`; appears once `persist_tasks` done.
+4. **Flights** — single "Skyscanner" link button; shown only when `plan_json.flights.skyscanner_url` is set. Rendered above the content sections so the booking action stays near the header.
+5. **Attractions** — card grid; appears once `plan_json.attractions[]` is populated.
+6. **Packing** — categorized list; appears once `plan_json.packing[]` is populated. (No placeholder when the branch fails — the `plan_json.warnings[]` banner above already surfaces that.)
+7. **Itinerary** — day-by-day list; appears once `plan_json.itinerary[]` is populated.
+8. **Generated tasks** — inline checklist plus an "Open tasks" button linking to `/tasks`; appears once `tasks` are loaded.
+
+Polling: while `status = 'planning'` the detail page additionally polls every 2s as a safety net behind the hub-driven invalidation, so the page stays fresh even if a `trips:changed` event is missed.
 
 Subscription:
 
@@ -344,34 +348,35 @@ wippy.on('trips:changed', ({ trip_id }) => {
 
 ### Categories
 
-**1. Flights task** (always created when status would be `ready` or `partial`)
+**1. Flights task** (always created when the itinerary is non-empty)
 
-- Title: `"Book flights — <origin?> → <destination> (<start> – <end>)"` (origin omitted when missing)
-- `scheduled_at`: **today**. MVP assumption: booking should happen as soon as possible after trip creation. A date-aware rule (e.g., "schedule booking reminder for N weeks before departure") is future work.
+- Title: `"Book flights — <origin> → <destination> (<start> – <end>)"` (origin segment omitted when missing).
+- `scheduled_at`: **today**. `due_date` is not set. MVP assumption: booking should happen as soon as possible after trip creation. A date-aware rule (e.g., "schedule booking reminder for N weeks before departure") is future work.
+- `priority`: **3 (high)**.
 - Notes (markdown):
-  ```
-  [Search on Skyscanner](<skyscanner_url>)
-  ```
-  If origin is missing or IATA resolution failed, the corresponding warning is prepended and the Skyscanner link is omitted.
+  - When a Skyscanner URL is available: `[Search on Skyscanner](<skyscanner_url>)`.
+  - When the link is missing (origin absent or IATA resolution failed): `_Flight search link unavailable — see trip warnings for details._`. The actual warnings are surfaced on the trip detail page via `plan_json.warnings[]`, so the note doesn't duplicate them.
 
-**2. Packing task** (created only if `packing_research` succeeded)
+**2. Packing task** (created only when `plan_json.packing[]` is non-empty)
 
 - Title: `"Pack for <destination> trip"`
-- `scheduled_at`: `start_date - 1 day`
-- Notes: markdown checklist (`- [ ] item`) grouped by category.
-- If `packing_research` failed, the task is **skipped** and a warning surfaces on the trip page.
+- `scheduled_at` and `due_date`: both set to `start_date − 1 day` (clamped — see below). Setting `due_date` makes the packing reminder render on the `/tasks` page's dated-task list alongside other deadlines.
+- `priority`: **3 (high)**.
+- Notes: markdown with a bold category heading per group and `- [ ] item` checklist lines underneath, blank line between categories.
+- If packing research failed (or returned an empty list) the task is **skipped**. A `Packing list unavailable — continuing without it.` warning is appended to `plan_json.warnings[]` instead.
 
 **3. Per-attraction tasks** (one per itinerary item)
 
 - Title: `"Visit <attraction_name>"`
-- `scheduled_at`: the `date` from that itinerary item.
-- Notes: description, time_slot, estimated duration, relevant `constraints`.
+- `scheduled_at` and `due_date`: both set to the itinerary item's `date` (clamped — see below). The itinerary date is effectively a hard deadline (the trip ends), so mirroring it into `due_date` keeps it on the dated-task list.
+- `priority`: **1 (low)**.
+- Notes: description paragraph, then bold `**Time slot:**`, `**Estimated duration:** Nh`, and `**Notes:** <constraints semicolon-joined>` lines when present.
 - If the same attraction appears on multiple days, each occurrence becomes a separate task.
 
 ### Scheduling rules
 
-- **Past-date clamp.** If any computed `scheduled_at` falls before today (e.g., a packing task for a trip starting tomorrow or a per-attraction task for a trip starting today), the value is clamped to **today**. This keeps the tasks list actionable and avoids creating pre-overdue rows.
-- **Priority is advisory only.** Flights task gets high priority, packing gets medium, attractions get low. These are hints for the task list UI; the workflow does not enforce ordering or gate task visibility on priority. Users may reorder freely in the task UI.
+- **Past-date clamp.** If any computed `scheduled_at`/`due_date` falls before today (e.g., a packing task for a trip starting tomorrow or a per-attraction task for a trip starting today), the value is clamped to **today**. Applied to flights (`today → today`, a no-op), packing (`start_date − 1 day → today if past`), and every itinerary item.
+- **Priorities.** Flights and packing use priority 3 (high), attractions use priority 1 (low). These are hints for the task list UI; the workflow does not enforce ordering or gate task visibility on priority. Users may reorder freely in the task UI.
 
 ### Product decision: tasks require an itinerary
 
@@ -381,10 +386,10 @@ Tasks are created only when the synthesizer produced a valid itinerary. This is 
 
 ## Status Semantics
 
-- **`planning`** — workflow has started, not yet reached `persist_tasks`.
-- **`ready`** — itinerary synthesized AND tasks persisted. Core purpose achieved.
-- **`partial`** — itinerary + tasks present, but one or more auxiliary branches (packing, flights) failed. Trip is usable; warnings surface in UI.
-- **`failed`** — attractions empty, synthesizer failed, or `persist_tasks` failed. No tasks created.
+- **`planning`** — workflow has started, not yet reached `persist_tasks` (the column default on insert).
+- **`ready`** — itinerary synthesized AND tasks persisted, with no auxiliary failures recorded.
+- **`partial`** — itinerary + tasks present, but the **packing** branch failed. Set by `persist_tasks` when it sees `workflow_state.nodes.packing_research.status == "failed"`. Note: failed flights resolution does **not** demote to `partial` today — the flights step is degradation-tolerant (link → placeholder text + warning) and never marks its node `failed`. If we later mark the flights branch as a hard failure on missing links, this rule should be widened.
+- **`failed`** — attractions empty, synthesizer empty, or `persist_tasks` failed mid-loop. Set by the failing `save_*`/`persist_tasks` func directly. No tasks are written.
 
 The per-node `workflow_state` stays available for all statuses — failures leave the node in `failed` state with an error message.
 
@@ -392,9 +397,18 @@ The per-node `workflow_state` stays available for all statuses — failures leav
 
 ## Durable Resume (Learning Demo)
 
-Because execution state is persisted via `wippy/dataflow` plus our own `trips.workflow_state` + `plan_json`, the workflow survives server restarts.
+Two layers cooperate to make trip workflows survive server restarts:
 
-**To observe this:** start a trip planning run, kill `./wippy run` mid-execution, restart with `./wippy run -c`. The workflow picks up from the last completed node, remaining nodes execute, `trips:changed` fires, and the `/trips/:id` page updates live through the resume without any frontend action.
+1. **Dataflow durability.** Per-node commands and outputs are persisted by `wippy/dataflow` as they execute. Our own `trips.workflow_state` + `plan_json` columns mirror the user-facing slice via `update_node_state` / `update_plan_section`.
+2. **Orchestrator respawn (auto-start).** The orchestrator process for a workflow is *not* durable on its own — it has to be re-spawned after a restart. `src/app/trips/resume_planning.lua` is registered in `src/app/trips/_index.yaml` as a `process.service` with `lifecycle.auto_start: true`. On startup it:
+    - selects every trip with `status = 'planning'` and a non-null `workflow_id`,
+    - looks up `dataflow.<workflow_id>` in the process registry to skip orchestrators that are already running (idempotent),
+    - calls `df_client:start(workflow_id, { init_func_id = "userspace.dataflow.session:artifact" })` for each missing one,
+    - logs `{ resumed, skipped, failed, total }` under the `trip_resume` named logger.
+
+   This service runs under the `system.trip_resume` actor — it does **not** carry any user identity, since recovery is global.
+
+**To observe this end-to-end:** start a trip planning run from the chat or `/trips/create`, kill `./wippy run` mid-execution, restart with `./wippy run -c`. The `resume_planning` service fires on boot, the workflow picks up from the last completed node, remaining nodes execute, `trips:changed` fires, and the `/trips/:id` page updates live through the resume without any frontend action.
 
 This is the most direct way to internalize why dataflow is worth using over ad-hoc async chains.
 
@@ -427,14 +441,15 @@ All endpoints and the `PlanTrip` tool are scoped per user via `security.actor():
 
 - `trips` table migration; `tasks.trip_id` + `tasks.scheduled_at` migration
 - Chat entry point (`trips_trait` + `PlanTrip` tool) and form entry point (`/trips/create`)
-- Full workflow: `normalize_input` → 3 concurrent research siblings (each with its own `save_*_gate` + `save_*` persistence func) → shared `join` → `itinerary_synthesize` → `save_itinerary` → `build_task_payloads` → `persist_tasks`
+- Full workflow: `normalize_input` → 3 concurrent research siblings (each with its own `save_*_gate` + `save_*` persistence func; the IATA→flights branch is two chained funcs) → shared `join` → `itinerary_synthesize` → `save_itinerary` → `build_task_payloads` → `persist_tasks`
 - Four workflow agents with `arena.exit_schema`
-- Four HTTP endpoints (create, list, get, delete)
+- Four HTTP endpoints (create, list, get, delete) — DELETE refuses with 409 while planning
 - Three frontend pages (`/trips`, `/trips/create`, `/trips/:id`) with a delete control on the detail page
-- Sidebar nav entry "Trips"
-- Live workflow panel + hub-driven refresh on detail page
-- Task generation with past-date clamp and advisory priorities
-- Warnings surfaced on trip detail page and in flights task notes
+- Sidebar nav entry "Trips" (registered in `frontend/applications/main/src/app/app.vue`, not as a `view.page`)
+- Live workflow panel + hub-driven refresh on detail page; planning trips additionally poll every 2s as a fallback
+- Auto-start `resume_planning` service that respawns dataflow orchestrators for in-flight trips after server restart
+- Task generation with past-date clamp and priority hints
+- Warnings surfaced on trip detail page; placeholder text shown in flights task notes when the link is unavailable
 
 ### Out of scope (future work)
 

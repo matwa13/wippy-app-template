@@ -32,22 +32,25 @@ All chat-driven changes are reflected live in the UI via a hub event.
 
 ### Schema (`tasks` table)
 
-| Column     | Type    | Notes                                    |
-|------------|---------|------------------------------------------|
-| id         | TEXT PK | UUIDv7                                   |
-| user_id    | TEXT    | FK to user, indexed                      |
-| title      | TEXT    | Required                                 |
-| done       | INTEGER | 0/1                                      |
-| notes      | TEXT    | Nullable, plain text                     |
-| due_date   | TEXT    | Nullable, ISO date (e.g. `2026-04-20`)   |
-| priority   | INTEGER | 1=low, 2=medium (default), 3=high        |
-| created_at | INTEGER | Unix epoch                               |
-| updated_at | INTEGER | Unix epoch                               |
+| Column        | Type    | Notes                                                       |
+|---------------|---------|-------------------------------------------------------------|
+| id            | TEXT PK | UUIDv7                                                      |
+| user_id       | TEXT    | FK to user, indexed                                         |
+| title         | TEXT    | Required                                                    |
+| done          | INTEGER | 0/1                                                         |
+| notes         | TEXT    | Nullable. Markdown — rendered with `MarkdownNotes` in the UI. |
+| due_date      | TEXT    | Nullable, ISO date (e.g. `2026-04-20`)                      |
+| priority      | INTEGER | 1=low, 2=medium (default), 3=high                           |
+| trip_id       | TEXT    | Nullable FK → `trips.id`, indexed. Set by Trip Planner; standalone tasks leave it null. |
+| scheduled_at  | TEXT    | Nullable ISO date — when the user should *do* the task. Distinct from `due_date` (external deadline). For trip-generated tasks, `scheduled_at` is always set; `due_date` is mirrored to the same value for packing/per-attraction tasks so they appear on the dated-task list. |
+| created_at    | INTEGER | Unix epoch                                                  |
+| updated_at    | INTEGER | Unix epoch                                                  |
 
 ### Migrations
 
-- `01_init.lua` — creates `tasks` table with id, user_id, title, done, timestamps
-- `02_add_fields.lua` — adds notes, due_date, priority columns
+- `src/app/tasks/migrations/01_init.lua` — creates `tasks` table with id, user_id, title, done, timestamps
+- `src/app/tasks/migrations/02_add_fields.lua` — adds notes, due_date, priority columns
+- `src/app/trips/migrations/02_tasks_fields.lua` — owned by the Trip Planner feature; adds `trip_id` and `scheduled_at` columns plus the `idx_tasks_trip` index. See [`trip-planner.md`](trip-planner.md) for how those columns are populated.
 
 ---
 

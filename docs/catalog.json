@@ -71,7 +71,7 @@
       "path": "docs/specs/trip-planner.md",
       "title": "Trip Planner feature",
       "category": "spec",
-      "summary": "Dataflow-driven trip planner: chat/form entry, concurrent research (attractions/packing/flights), critic cycle, task generation"
+      "summary": "Dataflow-driven trip planner: chat/form entry, three concurrent research branches (attractions, packing, IATA→flights-linker) joined into an itinerary synthesizer, join-gated save-after-each-agent persistence, task generation, durable resume via auto-start orchestrator respawn"
     }
   ]
 }
