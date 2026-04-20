@@ -5,7 +5,7 @@
 ## Progress
 
 **Branch:** `feature/trip-planner-subagent-driven-development`
-**Resume at:** Tasks 23-24 (manual browser smoke tests — require user) then Task 25 (doc updates). Phase 3 frontend complete.
+**Resume at:** Tasks 23-24 (manual browser smoke tests — require user) then Task 25 (doc updates). Phase 3 frontend complete. **Note:** after Phase 3 several architectural changes landed on the branch that diverge from this plan — see "Post-plan architectural changes" at the bottom. The task table below is preserved as the historical execution log; current architecture lives in `docs/specs/trip-planner.md`.
 
 | Task | Status | Commit | Notes |
 |---|---|---|---|
@@ -37,9 +37,9 @@
 
 **When you resume next session — do this first (literally the first thing before any new task):**
 
-1. Read this Progress section to confirm state.
-2. Phase 2 (backend + dataflow) is fully complete. Next up: Task 15 (HTTP kickoff that launches the workflow), then Task 16 (integration smoke test of the compiled DAG), then Phase 3 Tasks 17-22 (Vue pages for trip list / create / detail with hub-driven refresh).
-3. **Integration test note:** no end-to-end run of the compiled DAG has happened yet. Task 16 should exercise the full flow once before Phase 3 UI work — this is where the `error_to("@fail")` scope observation (below) will surface if it matters in practice.
+1. Read this Progress section and the "Post-plan architectural changes" section at the bottom to confirm state.
+2. Phases 1-3 are complete as checked off below, but the DAG has since been reworked (critic cycle removed, save-after-each-agent pattern added, IATA resolver split into its own agent, DELETE endpoint added). The code, `docs/specs/trip-planner.md`, and this plan's "Post-plan" section are the sources of truth — the task-by-task instructions above may describe code that no longer exists verbatim.
+3. **Tasks 23-25 are still open.** 23-24 require manual browser smoke tests; Task 25 (doc updates) is partially addressed by the spec rewrite but this file still needs the outstanding-issues fix-up before marking done. Do NOT mark them complete yet.
 
 **Review observations to revisit (non-blocking, plan-prescribed code):**
 - ~~`trip_repo.lua` — `update_node_state` / `update_plan_section` / `append_warning` do SELECT+UPDATE as two statements.~~ **Resolved in `891b58a` (Batch 2C.5):** all three helpers now use a single UPDATE via `json_patch` / `json_set`, which acquires an atomic write lock. Concurrent writes from Task 14's DAG branches serialize correctly.
@@ -72,7 +72,7 @@
 
 **Goal:** Ship the Trip Planner feature from `docs/specs/trip-planner.md` — a dataflow workflow that turns destination + dates into an itinerary, packing list, flight links, and a structured set of tasks, exposed via both chat tool and web form.
 
-**Architecture:** Backend is `src/app/trips/` (migrations + repo + service + HTTP + workflow funcs + 4 agents). Workflow uses `userspace.dataflow.flow:flow` builder: `normalize_input` (func) → 3 concurrent branches (attractions agent + packing agent + flights func) → join → cycle template {synthesizer agent → critic agent} (≤2 iter) → `build_task_payloads` (func) → `persist_tasks` (func). Two JSON columns on `trips` (`workflow_state` for execution state, `plan_json` for content) are kept strictly separate. Frontend is three new Vue pages with hub-driven refresh via `trips:changed`.
+**Architecture (as originally planned — see "Post-plan architectural changes" for what actually shipped):** Backend is `src/app/trips/` (migrations + repo + service + HTTP + workflow funcs + 4 agents). Workflow uses `userspace.dataflow.flow:flow` builder: `normalize_input` (func) → 3 concurrent branches (attractions agent + packing agent + flights func) → join → cycle template {synthesizer agent → critic agent} (≤2 iter) → `build_task_payloads` (func) → `persist_tasks` (func). Two JSON columns on `trips` (`workflow_state` for execution state, `plan_json` for content) are kept strictly separate. Frontend is three new Vue pages with hub-driven refresh via `trips:changed`.
 
 **Tech Stack:** Wippy Lua (func/agent registry entries, `wippy/dataflow`, `sql`, `uuid`, `process` hub), Vue 3 + Vite + TypeScript + PrimeVue + Tailwind + TanStack Query + Pinia.
 
@@ -3291,3 +3291,29 @@ git commit -m "docs: trip planner shipped"
 1. **Spec coverage:** every spec section maps to tasks — migrations (T1/T2), repo (T3), HTTP (T4-T6), funcs (T7-T12), agents (T13), flow (T14), service (T15), chat (T16), NavigateTo (T17), frontend (T18-T22), smoke (T23), durable resume (T24), docs (T25). §7 column-responsibility rule is enforced by `trip_repo.update_node_state` / `update_plan_section` being the only write paths. §6 boundary "research vs planning" is enforced by the agent prompts + exit schemas. §9 task generation rules are covered by T9 (`build_task_payloads` tests include flights/packing/per-attraction, past-date clamp, origin-missing notes, and the "no itinerary → no tasks" product rule).
 2. **Placeholders:** none — every code step has actual code.
 3. **Type consistency:** node keys (`normalize_input`, `attractions_research`, `packing_research`, `flights_linker`, `itinerary_synthesize`, `itinerary_critic`, `build_task_payloads`, `persist_tasks`) are identical in `trip_repo.INITIAL_WORKFLOW_STATE`, in `trip_flow.lua` `:as(...)` labels, and in the frontend `NODE_ORDER` array. Agent ids (`app.agents:trip_attractions_researcher` etc.) are consistent between `_index.yaml` registration and `trip_flow.lua`. `plan_json` keys (`attractions`, `packing`, `flights`, `itinerary`, `warnings`) are identical across `save_*` funcs, `build_task_payloads` input shape, and `TripDetail.plan_json` in the TS types.
+
+---
+
+## Post-plan architectural changes
+
+After Phase 3 finished (last plan-driven commit: `f655164` marking Task 22 done), four follow-on commits landed on the branch that diverge from the task-by-task instructions above. They are listed here so readers know which code to trust. The current spec at `docs/specs/trip-planner.md` reflects the post-change architecture; this plan's task table is preserved as a historical execution log.
+
+| Commit | Summary | What changed vs this plan |
+|---|---|---|
+| `e5accf4` | IATA codes | Added `trip_iata_resolver` agent as a 3rd research branch and a matching `save_iata_resolver` func that forwards resolved codes to `flights_linker`. Plan had `flights_linker` derive codes itself from raw city names. The synthesizer's `exit_func_id` hook was still present at this point. |
+| `0b2189c` | remove google link | Removed the Google Flights deep-link that Task 8 originally emitted alongside the Skyscanner link. `flights_linker` now produces a single URL. `build_task_payloads_test.lua` + `flights_linker_test.lua` updated to match. |
+| `fd178a6` | replace critic cycle with join-gated synthesis flow | **Major.** Removed the `cycle {synthesize → critique}` template (≤2 iter) prescribed in Task 13/14 entirely. The DAG is now strictly linear once synthesis begins. To give each persistence step access to both agent output and trip context, every `save_*` / `flights_linker` / `build_task_payloads` / `persist_tasks` func is preceded by a `:join()` gate. `normalize_input` fans a `context` edge to every gate. Added `save_itinerary` func (agent output → `plan_json.itinerary`, fails workflow on empty). Removed the `exit_func_id` wiring on the synthesizer (schema-only validation now). `trip_itinerary_critic` agent was left in the registry as dead code until the 2026-04-20 cleanup. |
+| `a481912` | trips removal | Despite the message, this **adds** `DELETE /api/v1/trips/{id}` (`api/delete_trip.lua` + `trip_repo.delete_with_tasks`) and a matching delete control on the detail page. The plan placed this in "Out of scope"; it is now In scope and documented in the spec's HTTP API section. |
+
+**2026-04-20 cleanup (this plan revision):**
+
+- Deleted `src/app/trips/flow/validate_synthesizer_exit.lua` + its test + two `_index.yaml` entries — the synthesizer stopped using `exit_func_id` when `fd178a6` landed and the function had been dead code since then.
+- Deleted the `trip_itinerary_critic` agent entry from `src/app/agents/_index.yaml` — unused since `fd178a6` removed the cycle.
+- Rewrote `docs/specs/trip-planner.md` to match the current DAG, node roles, agent arena config, file list, and HTTP surface (DELETE in, critic/exit-func-id out).
+
+**Still outstanding (Tasks 23-25 remain open):**
+
+- Task 23 — manual browser smoke test of the full create→workflow→detail flow. Has not been re-run since the architectural rework; the detail page's workflow panel now renders 8 tracked nodes instead of the original 9, and the iteration counter is gone.
+- Task 24 — durable-resume demo (kill server mid-run, restart `./wippy run -c`, observe the page update through the resume). Still unverified end-to-end against the new DAG.
+- Task 25 — spec + plan docs are now aligned with the code (this pass), but `docs/catalog.json`, `docs/PLAN.md`, and `CLAUDE.md` still need to be updated to reflect the shipped feature before marking this task done.
+- Review observations above that were deferred or became moot under the new architecture should be re-walked once 23-24 produce live evidence; some (e.g. the `error_to("@fail")` scope note from Task 14) are more visible now that the DAG has more join nodes that can deadlock on a missing discriminator.

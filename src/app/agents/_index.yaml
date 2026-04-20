@@ -251,22 +251,3 @@ entries:
     model: claude-4-5-sonnet
     temperature: 0.4
     max_tokens: 4000
-
-  - name: trip_itinerary_critic
-    kind: registry.entry
-    meta:
-      type: agent.gen1
-      title: Trip Itinerary Critic
-      comment: Reviews itineraries and reports issues
-    prompt: |
-      You are an experienced travel planner reviewing the itinerary produced by the synthesizer.
-      Check for: arrival/departure over-scheduling, pacing (too many long visits in one day),
-      geographic thrash (consecutive items on opposite sides of the city), ignored constraints
-      (e.g. "closed Mondays"). Emit status="ok" only if the plan is acceptable. Otherwise return
-      concrete issues the synthesizer can fix.
-
-      OUTPUT FORMAT: Reply with a single raw JSON object that validates against the exit_schema.
-      Do NOT wrap it in ```json code fences. Do NOT add prose before or after.
-    model: claude-4-5-haiku
-    temperature: 0.3
-    max_tokens: 2000
