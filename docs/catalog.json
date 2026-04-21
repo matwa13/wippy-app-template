@@ -14,6 +14,12 @@
       "summary": "This document defines code style requirements for Lua and YAML files in DocBrief."
     },
     {
+      "path": "docs/reference/project-structure.md",
+      "title": "Project Structure Convention",
+      "category": "reference",
+      "summary": "src/app/ layout rules: feature folders own their api/tools/migrations/tests subfolders; app/api/ is cross-cutting only"
+    },
+    {
       "path": "frontend/docs/README.md",
       "title": "Wippy Frontend Development Guide",
       "category": "reference",
