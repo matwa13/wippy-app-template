@@ -3,7 +3,7 @@ local json = require("json")
 local security = require("security")
 local task_repo = require("task_repo")
 
-local function handler()
+local function handler(): (nil, string?)
     local req = http.request()
     local res = http.response()
     res:set_content_type(http.CONTENT.JSON)
@@ -36,12 +36,12 @@ local function handler()
         return
     end
 
-    local fields = {}
-    if data.title ~= nil then fields.title = data.title end
+    local fields: task_repo.UpdateFields = {}
+    if data.title ~= nil then fields.title = tostring(data.title) end
     if data.done ~= nil then fields.done = data.done and true or false end
-    if data.notes ~= nil then fields.notes = data.notes end
-    if data.due_date ~= nil then fields.due_date = data.due_date end
-    if data.priority ~= nil then fields.priority = data.priority end
+    if data.notes ~= nil then fields.notes = tostring(data.notes) end
+    if data.due_date ~= nil then fields.due_date = tostring(data.due_date) end
+    if data.priority ~= nil then fields.priority = tonumber(data.priority) end
 
     if not next(fields) then
         res:set_status(http.STATUS.BAD_REQUEST)
@@ -49,7 +49,8 @@ local function handler()
         return
     end
 
-    local task, u_err = task_repo.update(actor:id(), id, fields)
+    local user_id: string = actor:id()
+    local task, u_err = task_repo.update(user_id, tostring(id), fields)
     if u_err == "not_found" then
         res:set_status(http.STATUS.NOT_FOUND)
         res:write_json({ success = false, error = "task not found" })

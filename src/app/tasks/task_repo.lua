@@ -3,33 +3,67 @@ local uuid = require("uuid")
 
 local DB_RESOURCE = "app:db"
 
-local function now()
+type TaskFilter = "all" | "open" | "done"
+
+type Task = {
+    id: string,
+    title: string,
+    done: boolean,
+    notes: string?,
+    due_date: string?,
+    priority: number,
+    trip_id: string?,
+    scheduled_at: string?,
+    created_at: number,
+    updated_at: number,
+}
+
+
+type CreateOpts = {
+    notes: string?,
+    due_date: string?,
+    priority: number?,
+    scheduled_at: string?,
+}
+
+type UpdateFields = {
+    title: string?,
+    done: boolean?,
+    notes: string?,
+    due_date: string?,
+    priority: number?,
+}
+
+local function now(): number
     return os.time()
 end
 
-local function get_db()
+local function get_db(): (any, string?)
     return sql.get(DB_RESOURCE)
 end
 
-local function row_to_task(row)
-    return {
-        id         = row.id,
-        title      = row.title,
+local function row_to_task(row: any): Task
+    local task: Task = {
+        id         = tostring(row.id),
+        title      = tostring(row.title),
         done       = tonumber(row.done) == 1,
-        notes      = row.notes,
-        due_date   = row.due_date,
+        notes      = row.notes and tostring(row.notes) or nil,
+        due_date   = row.due_date and tostring(row.due_date) or nil,
         priority   = tonumber(row.priority) or 2,
-        created_at = tonumber(row.created_at),
-        updated_at = tonumber(row.updated_at),
+        trip_id    = row.trip_id and tostring(row.trip_id) or nil,
+        scheduled_at = row.scheduled_at and tostring(row.scheduled_at) or nil,
+        created_at = tonumber(row.created_at) or 0,
+        updated_at = tonumber(row.updated_at) or 0,
     }
+    return task
 end
 
-local function list(user_id, filter)
+local function list(user_id: string, filter: TaskFilter?): ({Task}?, string?)
     local db, err = get_db()
     if err then return nil, err end
 
-    local query = "SELECT id, title, done, notes, due_date, priority, created_at, updated_at FROM tasks WHERE user_id = ?"
-    local args = { user_id }
+    local query: string = "SELECT id, title, done, notes, due_date, priority, created_at, updated_at FROM tasks WHERE user_id = ?"
+    local args: {any} = { user_id }
 
     if filter == "open" then
         query = query .. " AND done = 0"
@@ -49,14 +83,14 @@ local function list(user_id, filter)
     db:release()
     if q_err then return nil, q_err end
 
-    local tasks = {}
+    local tasks: {Task} = {}
     for _, r in ipairs(rows) do
         table.insert(tasks, row_to_task(r))
     end
     return tasks
 end
 
-local function get(user_id, id)
+local function get(user_id: string, id: string): (Task?, string?)
     local db, err = get_db()
     if err then return nil, err end
 
@@ -70,28 +104,38 @@ local function get(user_id, id)
     return row_to_task(rows[1])
 end
 
-local function create(user_id, title, opts)
+local function create(user_id: string, title: string, opts: CreateOpts?): (Task?, string?)
     if not title or title == "" then return nil, "title is required" end
-    opts = opts or {}
+    local o: CreateOpts = opts or {}
 
     local db, err = get_db()
     if err then return nil, err end
 
-    local id = uuid.v7()
-    local ts = now()
-    local priority = opts.priority or 2
+    local id: string = uuid.v7()
+    local ts: number = now()
+    local priority: number = o.priority or 2
     local _, e_err = db:execute(
         "INSERT INTO tasks (id, user_id, title, done, notes, due_date, priority, created_at, updated_at) VALUES (?, ?, ?, 0, ?, ?, ?, ?, ?)",
-        { id, user_id, title, opts.notes, opts.due_date, priority, ts, ts }
+        { id, user_id, title, o.notes, o.due_date, priority, ts, ts }
     )
     db:release()
     if e_err then return nil, e_err end
 
-    return { id = id, title = title, done = false, notes = opts.notes, due_date = opts.due_date, priority = priority, created_at = ts, updated_at = ts }
+    return {
+        id = id,
+        title = title,
+        done = false,
+        notes = o.notes,
+        due_date = o.due_date,
+        priority = priority,
+        created_at = ts,
+        updated_at = ts,
+    }
 end
 
-local function update(user_id, id, fields)
-    local sets, args = {}, {}
+local function update(user_id: string, id: string, fields: UpdateFields): (Task?, string?)
+    local sets: {string} = {}
+    local args: {any} = {}
     if fields.title ~= nil then
         table.insert(sets, "title = ?")
         table.insert(args, fields.title)
@@ -133,7 +177,7 @@ local function update(user_id, id, fields)
     return get(user_id, id)
 end
 
-local function delete(user_id, id)
+local function delete(user_id: string, id: string): (boolean?, string?)
     local db, err = get_db()
     if err then return nil, err end
 
@@ -149,17 +193,17 @@ end
 
 --- Fuzzy-match a task by title for a user.
 -- Rule: exact (case-insensitive) → unique substring → ambiguous.
--- @return task, err, candidates
-local function find_by_title(user_id, query, only_open)
+local function find_by_title(user_id: string, query: string, only_open: boolean?): (Task?, string?, {Task}?)
     if not query or query == "" then return nil, "title is required" end
 
     local tasks, err = list(user_id, only_open and "open" or "all")
     if err then return nil, err end
 
-    local q = query:lower()
-    local exact, substr = {}, {}
+    local q: string = query:lower()
+    local exact: {Task} = {}
+    local substr: {Task} = {}
     for _, t in ipairs(tasks) do
-        local title_l = t.title:lower()
+        local title_l: string = t.title:lower()
         if title_l == q then
             table.insert(exact, t)
         elseif title_l:find(q, 1, true) then
@@ -174,30 +218,36 @@ local function find_by_title(user_id, query, only_open)
     return nil, "not_found"
 end
 
-local function create_with_trip(user_id, trip_id, title, opts)
+local function create_with_trip(user_id: string, trip_id: string, title: string, opts: CreateOpts?): (Task?, string?)
     if not title or title == "" then return nil, "title is required" end
-    opts = opts or {}
+    local o: CreateOpts = opts or {}
 
     local db, err = get_db()
     if err then return nil, err end
 
-    local id = uuid.v7()
-    local ts = now()
-    local priority = opts.priority or 2
+    local id: string = uuid.v7()
+    local ts: number = now()
+    local priority: number = o.priority or 2
     local _, e_err = db:execute([[
         INSERT INTO tasks (id, user_id, title, done, notes, due_date, scheduled_at,
                            priority, trip_id, created_at, updated_at)
         VALUES (?, ?, ?, 0, ?, ?, ?, ?, ?, ?, ?)
-    ]], { id, user_id, title, opts.notes, opts.due_date, opts.scheduled_at,
+    ]], { id, user_id, title, o.notes, o.due_date, o.scheduled_at,
           priority, trip_id, ts, ts })
     db:release()
     if e_err then return nil, e_err end
 
     return {
-        id = id, title = title, done = false,
-        notes = opts.notes, due_date = opts.due_date,
-        scheduled_at = opts.scheduled_at, priority = priority,
-        trip_id = trip_id, created_at = ts, updated_at = ts,
+        id = id,
+        title = title,
+        done = false,
+        notes = o.notes,
+        due_date = o.due_date,
+        scheduled_at = o.scheduled_at,
+        priority = priority,
+        trip_id = trip_id,
+        created_at = ts,
+        updated_at = ts,
     }
 end
 

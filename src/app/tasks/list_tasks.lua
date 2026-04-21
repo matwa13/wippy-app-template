@@ -2,7 +2,7 @@ local http = require("http")
 local security = require("security")
 local task_repo = require("task_repo")
 
-local function handler()
+local function handler(): (nil, string?)
     local req = http.request()
     local res = http.response()
     res:set_content_type(http.CONTENT.JSON)
@@ -14,8 +14,14 @@ local function handler()
         return
     end
 
-    local filter = req:query("filter") or "all"
-    local tasks, err = task_repo.list(actor:id(), filter)
+    local user_id: string = actor:id()
+    local raw_filter = req:query("filter") or "all"
+    local filter: "all" | "open" | "done" = "all"
+    if raw_filter == "open" or raw_filter == "done" then
+        filter = raw_filter
+    end
+
+    local tasks, err = task_repo.list(user_id, filter)
     if err then
         res:set_status(http.STATUS.INTERNAL_ERROR)
         res:write_json({ success = false, error = err })

@@ -2,7 +2,7 @@ local http = require("http")
 local security = require("security")
 local task_repo = require("task_repo")
 
-local function handler()
+local function handler(): (nil, string?)
     local req = http.request()
     local res = http.response()
     res:set_content_type(http.CONTENT.JSON)
@@ -21,7 +21,8 @@ local function handler()
         return
     end
 
-    local _, err = task_repo.delete(actor:id(), id)
+    local user_id: string = actor:id()
+    local _, err = task_repo.delete(user_id, tostring(id))
     if err == "not_found" then
         res:set_status(http.STATUS.NOT_FOUND)
         res:write_json({ success = false, error = "task not found" })
