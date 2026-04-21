@@ -4,7 +4,7 @@ namespace: app.users
 entries:
     - name: list_users
       kind: function.lua
-      source: file://list_users.lua
+      source: file://api/list_users.lua
       modules:
           - http
       imports:
@@ -24,7 +24,7 @@ entries:
 
     - name: create_user
       kind: function.lua
-      source: file://create_user.lua
+      source: file://api/create_user.lua
       modules:
           - http
           - json
@@ -44,7 +44,7 @@ entries:
 
     - name: delete_user
       kind: function.lua
-      source: file://delete_user.lua
+      source: file://api/delete_user.lua
       modules:
           - http
       imports:
@@ -63,7 +63,7 @@ entries:
 
     - name: update_user
       kind: function.lua
-      source: file://update_user.lua
+      source: file://api/update_user.lua
       modules:
           - http
           - json
@@ -83,7 +83,7 @@ entries:
 
     - name: get_user_groups
       kind: function.lua
-      source: file://get_user_groups.lua
+      source: file://api/get_user_groups.lua
       modules:
           - http
       imports:
@@ -102,7 +102,7 @@ entries:
 
     - name: set_user_groups
       kind: function.lua
-      source: file://set_user_groups.lua
+      source: file://api/set_user_groups.lua
       modules:
           - http
           - json
@@ -125,7 +125,7 @@ entries:
       meta:
           type: test
           suite: users
-      source: file://users_test.lua
+      source: file://tests/users_test.lua
       method: run
       imports:
           test: wippy.test:test

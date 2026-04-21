@@ -296,7 +296,7 @@ entries:
       meta:
           type: test
           suite: trips
-      source: file://trip_repo_test.lua
+      source: file://tests/trip_repo_test.lua
       method: run
       modules:
           - sql
@@ -309,7 +309,7 @@ entries:
       meta:
           type: test
           suite: trips
-      source: file://normalize_input_test.lua
+      source: file://tests/normalize_input_test.lua
       method: run
       imports:
           test: wippy.test:test
@@ -320,7 +320,7 @@ entries:
       meta:
           type: test
           suite: trips
-      source: file://flights_linker_test.lua
+      source: file://tests/flights_linker_test.lua
       method: run
       imports:
           test: wippy.test:test
@@ -331,7 +331,7 @@ entries:
       meta:
           type: test
           suite: trips
-      source: file://build_task_payloads_test.lua
+      source: file://tests/build_task_payloads_test.lua
       method: run
       imports:
           test: wippy.test:test

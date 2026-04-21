@@ -46,7 +46,7 @@ entries:
     # --- HTTP handlers ---
     - name: list_tasks
       kind: function.lua
-      source: file://list_tasks.lua
+      source: file://api/list_tasks.lua
       modules:
           - http
           - security
@@ -66,7 +66,7 @@ entries:
 
     - name: create_task
       kind: function.lua
-      source: file://create_task.lua
+      source: file://api/create_task.lua
       modules:
           - http
           - json
@@ -87,7 +87,7 @@ entries:
 
     - name: update_task
       kind: function.lua
-      source: file://update_task.lua
+      source: file://api/update_task.lua
       modules:
           - http
           - json
@@ -108,7 +108,7 @@ entries:
 
     - name: delete_task
       kind: function.lua
-      source: file://delete_task.lua
+      source: file://api/delete_task.lua
       modules:
           - http
           - security

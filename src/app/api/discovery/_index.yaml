@@ -1,5 +1,5 @@
 version: "1.0"
-namespace: app.api.entries
+namespace: app.api.discovery
 
 entries:
     - name: list_agents

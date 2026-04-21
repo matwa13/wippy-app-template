@@ -1,3 +1,6 @@
+# Cross-cutting / platform endpoints only — auth, discovery, websocket, demo.
+# Feature-owned APIs live under <feature>/api/ (see users/, tasks/, trips/).
+
 version: "1.0"
 namespace: app.api
 
@@ -19,19 +22,3 @@ entries:
       func: hello
       path: /hello
 
-    - name: login_page
-      kind: function.lua
-      source: file://login_page.lua
-      modules:
-          - http
-          - security
-          - time
-      method: handler
-
-    - name: login_page.endpoint
-      kind: http.endpoint
-      meta:
-          router: app:api.public
-      method: GET
-      func: login_page
-      path: /auth/login
