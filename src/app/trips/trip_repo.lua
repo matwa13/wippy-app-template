@@ -4,28 +4,91 @@ local json = require("json")
 
 local DB_RESOURCE = "app:db"
 
-local function now() return os.time() end
-local function get_db() return sql.get(DB_RESOURCE) end
+type TripStatus = "planning" | "ready" | "partial" | "failed"
+type TripFilter = "all" | "planning" | "ready" | "partial" | "failed"
 
-local function row_to_trip(row)
-    return {
-        id             = row.id,
-        user_id        = row.user_id,
-        title          = row.title,
-        destination    = row.destination,
-        origin         = row.origin,
-        start_date     = row.start_date,
-        end_date       = row.end_date,
-        status         = row.status,
-        workflow_id    = row.workflow_id,
-        workflow_state = row.workflow_state and json.decode(row.workflow_state) or nil,
-        plan_json      = row.plan_json and json.decode(row.plan_json) or nil,
-        created_at     = tonumber(row.created_at),
-        updated_at     = tonumber(row.updated_at),
-    }
+type NodeState = {
+    status: string,
+    started_at: number?,
+    ended_at: number?,
+    error: string?,
+}
+
+type WorkflowState = {
+    nodes: {[string]: NodeState}?,
+}
+
+type PlanJson = {
+    warnings: {string}?,
+    attractions: {any}?,
+    packing: {any}?,
+    iata: {any}?,
+    flights: {any}?,
+    itinerary: {any}?,
+}
+
+type Trip = {
+    id: string,
+    user_id: string?,
+    title: string,
+    destination: string?,
+    origin: string?,
+    start_date: string?,
+    end_date: string?,
+    status: string,
+    workflow_id: string?,
+    workflow_state: any,
+    plan_json: any,
+    created_at: number?,
+    updated_at: number?,
+    tasks: {any}?,
+}
+
+type CreateFields = {
+    destination: string,
+    origin: string?,
+    start_date: string,
+    end_date: string,
+}
+
+type CreateResult = {
+    id: string,
+    title: string,
+    status: string,
+}
+
+type DeleteResult = {
+    tasks_deleted: number,
+}
+
+local function now(): number
+    return os.time()
 end
 
-local INITIAL_WORKFLOW_STATE = {
+local function get_db(): (any, string?)
+    return sql.get(DB_RESOURCE)
+end
+
+local function row_to_trip(row: any): Trip
+    local trip: Trip = {
+        id             = tostring(row.id),
+        user_id        = row.user_id and tostring(row.user_id) or nil,
+        title          = tostring(row.title),
+        destination    = row.destination and tostring(row.destination) or nil,
+        origin         = row.origin and tostring(row.origin) or nil,
+        start_date     = row.start_date and tostring(row.start_date) or nil,
+        end_date       = row.end_date and tostring(row.end_date) or nil,
+        status         = tostring(row.status),
+        workflow_id    = row.workflow_id and tostring(row.workflow_id) or nil,
+        workflow_state = row.workflow_state and json.decode(row.workflow_state) or nil,
+        plan_json      = row.plan_json and json.decode(row.plan_json) or nil,
+        created_at     = row.created_at and tonumber(row.created_at) or nil,
+        updated_at     = row.updated_at and tonumber(row.updated_at) or nil,
+    }
+    return trip
+end
+
+local INITIAL_WORKFLOW_STATE: WorkflowState = {
     nodes = {
         normalize_input      = { status = "pending" },
         attractions_research = { status = "pending" },
@@ -38,19 +101,20 @@ local INITIAL_WORKFLOW_STATE = {
     }
 }
 
-local function initial_workflow_state_json()
+local function initial_workflow_state_json(): string
     return json.encode(INITIAL_WORKFLOW_STATE)
 end
 
-local function create(user_id, fields)
+local function create(user_id: string, fields: CreateFields): (CreateResult?, string?)
     local db, err = get_db()
     if err then return nil, err end
 
-    local id = uuid.v7()
-    local ts = now()
-    local title = string.format("%s, %s – %s", fields.destination, fields.start_date, fields.end_date)
-    local ws = initial_workflow_state_json()
-    local plan = json.encode({ warnings = {} })
+    local id: string = uuid.v7()
+    local ts: number = now()
+    local title: string = string.format("%s, %s – %s",
+        fields.destination, fields.start_date, fields.end_date)
+    local ws: string = initial_workflow_state_json()
+    local plan: string = json.encode({ warnings = {} })
 
     local _, e_err = db:execute([[
         INSERT INTO trips (id, user_id, title, destination, origin, start_date, end_date,
@@ -63,7 +127,7 @@ local function create(user_id, fields)
     return { id = id, title = title, status = "planning" }
 end
 
-local function get(user_id, id)
+local function get(user_id: string, id: string): (Trip?, string?)
     local db, err = get_db()
     if err then return nil, err end
     local rows, q_err = db:query(
@@ -74,13 +138,13 @@ local function get(user_id, id)
     return row_to_trip(rows[1])
 end
 
-local function list(user_id, filter)
+local function list(user_id: string, filter: TripFilter?): ({Trip}?, string?)
     local db, err = get_db()
     if err then return nil, err end
-    local query = [[SELECT id, user_id, title, destination, origin, start_date, end_date,
+    local query: string = [[SELECT id, user_id, title, destination, origin, start_date, end_date,
                            status, workflow_id, created_at, updated_at
                     FROM trips WHERE user_id = ?]]
-    local args = { user_id }
+    local args: {any} = { user_id }
     if filter and filter ~= "all" then
         query = query .. " AND status = ?"
         table.insert(args, filter)
@@ -89,14 +153,14 @@ local function list(user_id, filter)
     local rows, q_err = db:query(query, args)
     db:release()
     if q_err then return nil, q_err end
-    local out = {}
+    local out: {Trip} = {}
     for _, r in ipairs(rows) do table.insert(out, row_to_trip(r)) end
     return out
 end
 
-local function set_workflow_id(id, workflow_id)
+local function set_workflow_id(id: string, workflow_id: string): (boolean, string?)
     local db, err = get_db()
-    if err then return nil, err end
+    if err then return false, err end
     local _, e_err = db:execute(
         "UPDATE trips SET workflow_id = ?, updated_at = ? WHERE id = ?",
         { workflow_id, now(), id })
@@ -104,9 +168,9 @@ local function set_workflow_id(id, workflow_id)
     return e_err == nil, e_err
 end
 
-local function set_status(id, status)
+local function set_status(id: string, status: string): (boolean, string?)
     local db, err = get_db()
-    if err then return nil, err end
+    if err then return false, err end
     local _, e_err = db:execute(
         "UPDATE trips SET status = ?, updated_at = ? WHERE id = ?",
         { status, now(), id })
@@ -115,10 +179,10 @@ local function set_status(id, status)
 end
 
 --- Merge patch into workflow_state.nodes[node_key]. Never touches plan_json.
-local function update_node_state(id, node_key, patch)
+local function update_node_state(id: string, node_key: string, patch: NodeState): (boolean, string?)
     local db, err = get_db()
-    if err then return nil, err end
-    local payload = json.encode({ nodes = { [node_key] = patch } })
+    if err then return false, err end
+    local payload: string = json.encode({ nodes = { [node_key] = patch } })
     local _, e_err = db:execute(
         "UPDATE trips SET workflow_state = json_patch(COALESCE(workflow_state, '{}'), ?), updated_at = ? WHERE id = ?",
         { payload, now(), id })
@@ -127,10 +191,10 @@ local function update_node_state(id, node_key, patch)
 end
 
 --- Write one top-level key on plan_json. Never touches workflow_state.
-local function update_plan_section(id, key, value)
+local function update_plan_section(id: string, key: string, value: any): (boolean, string?)
     local db, err = get_db()
-    if err then return nil, err end
-    local payload = json.encode({ [key] = value })
+    if err then return false, err end
+    local payload: string = json.encode({ [key] = value })
     local _, e_err = db:execute(
         "UPDATE trips SET plan_json = json_patch(COALESCE(plan_json, '{}'), ?), updated_at = ? WHERE id = ?",
         { payload, now(), id })
@@ -138,10 +202,10 @@ local function update_plan_section(id, key, value)
     return e_err == nil, e_err
 end
 
---- Append a warning to plan_json.warnings (string).
-local function append_warning(id, message)
+--- Append a warning string to plan_json.warnings.
+local function append_warning(id: string, message: string): (boolean, string?)
     local db, err = get_db()
-    if err then return nil, err end
+    if err then return false, err end
     local _, e_err = db:execute(
         [[UPDATE trips SET plan_json = json_set(COALESCE(plan_json, '{"warnings":[]}'), '$.warnings[#]', ?), updated_at = ? WHERE id = ?]],
         { message, now(), id })
@@ -151,8 +215,7 @@ end
 
 --- Hard-delete a trip and every task attached to it (transactional).
 -- Refuses to delete while the trip is still planning (workflow in flight).
--- @return { tasks_deleted = N }, err
-local function delete(user_id, id)
+local function delete(user_id: string, id: string): (DeleteResult?, string?)
     local db, err = get_db()
     if err then return nil, err end
 

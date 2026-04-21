@@ -1,8 +1,17 @@
 local flow = require("flow")
 
+type FlowInput = {
+    trip_id: string,
+    user_id: string,
+    destination: string,
+    origin: string?,
+    start_date: string,
+    end_date: string,
+}
+
 -- Exit schemas are defined here (not in the agent YAML arena block) because the
 -- flow agent node reads arena config from the DSL call site, not the registry.
-local attractions_exit_schema = {
+local attractions_exit_schema: table = {
     type = "object",
     required = { "attractions" },
     additionalProperties = false,
@@ -26,7 +35,7 @@ local attractions_exit_schema = {
     },
 }
 
-local packing_exit_schema = {
+local packing_exit_schema: table = {
     type = "object",
     required = { "packing" },
     additionalProperties = false,
@@ -46,7 +55,7 @@ local packing_exit_schema = {
     },
 }
 
-local iata_exit_schema = {
+local iata_exit_schema: table = {
     type = "object",
     required = { "origin_iata", "destination_iata" },
     additionalProperties = false,
@@ -56,7 +65,7 @@ local iata_exit_schema = {
     },
 }
 
-local itinerary_exit_schema = {
+local itinerary_exit_schema: table = {
     type = "object",
     required = { "itinerary" },
     additionalProperties = false,
@@ -81,9 +90,7 @@ local itinerary_exit_schema = {
     },
 }
 
-local function build_and_start(input)
-    -- input: { trip_id, user_id, destination, origin, start_date, end_date }
-    --
+local function build_and_start(input: FlowInput): (any, any)
     -- NOTE on join gates: :func() nodes fire *per edge arrival* — they don't
     -- wait for all inbound edges before executing. Any :func() that needs
     -- multiple discriminators (e.g. agent output + trip context) must be

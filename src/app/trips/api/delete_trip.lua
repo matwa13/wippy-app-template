@@ -4,7 +4,7 @@ local trip_repo = require("trip_repo")
 local trips_common = require("trips_common")
 local tasks_common = require("tasks_common")
 
-local function handler()
+local function handler(): (nil, string?)
     local req = http.request()
     local res = http.response()
     res:set_content_type(http.CONTENT.JSON)
@@ -23,8 +23,9 @@ local function handler()
         return
     end
 
-    local user_id = actor:id()
-    local result, err = trip_repo.delete(user_id, id)
+    local user_id: string = actor:id()
+    local trip_id: string = tostring(id)
+    local result, err = trip_repo.delete(user_id, trip_id)
     if err == "not_found" then
         res:set_status(http.STATUS.NOT_FOUND)
         res:write_json({ success = false, error = "trip not found" })
@@ -33,13 +34,13 @@ local function handler()
         res:set_status(http.STATUS.CONFLICT)
         res:write_json({ success = false, error = "cannot delete a trip while it is still planning" })
         return
-    elseif err then
+    elseif err or not result then
         res:set_status(http.STATUS.INTERNAL_ERROR)
-        res:write_json({ success = false, error = err })
+        res:write_json({ success = false, error = err or "delete failed" })
         return
     end
 
-    trips_common.notify(user_id, id)
+    trips_common.notify(user_id, trip_id)
     if (result.tasks_deleted or 0) > 0 then
         tasks_common.notify(user_id)
     end

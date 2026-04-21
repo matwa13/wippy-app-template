@@ -7,15 +7,22 @@ local INIT_FUNC_ID = "userspace.dataflow.session:artifact"
 
 local log = logger:named("trip_resume")
 
+type ResumeResult = {
+    resumed: number,
+    skipped: number?,
+    failed: number?,
+    error: string?,
+}
+
 --- Respawn the dataflow orchestrator for every trip still in `planning`.
 -- Commands and node state are durable; the orchestrator process is not,
 -- so we re-spawn it after server restart. Idempotent: skips workflows
 -- whose orchestrator is already registered.
-local function run()
+local function run(): ResumeResult
     local db, err = sql.get(DB_RESOURCE)
     if err then
         log:error("failed to acquire db", { error = err })
-        return { resumed = 0, error = err }
+        return { resumed = 0, error = tostring(err) }
     end
 
     local rows, q_err = db:query(
@@ -25,7 +32,7 @@ local function run()
     db:release()
     if q_err then
         log:error("failed to query planning trips", { error = q_err })
-        return { resumed = 0, error = q_err }
+        return { resumed = 0, error = tostring(q_err) }
     end
 
     if #rows == 0 then
@@ -38,9 +45,11 @@ local function run()
         return { resumed = 0, error = c_err }
     end
 
-    local resumed, skipped, failed = 0, 0, 0
+    local resumed: number = 0
+    local skipped: number = 0
+    local failed: number = 0
     for _, row in ipairs(rows) do
-        local wid = row.workflow_id
+        local wid: string = tostring(row.workflow_id)
         local existing = process.registry.lookup("dataflow." .. wid)
         if existing then
             skipped = skipped + 1

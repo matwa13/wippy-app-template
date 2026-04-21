@@ -3,7 +3,22 @@ local trip_service = require("trip_service")
 
 local DATE_RE = "^%d%d%d%d%-%d%d%-%d%d$"
 
-local function handler(params)
+type PlanParams = {
+    destination: string?,
+    origin: string?,
+    start_date: string?,
+    end_date: string?,
+}
+
+type ToolResult = {
+    success: boolean,
+    error: string?,
+    message: string?,
+    trip_id: string?,
+    url: string?,
+}
+
+local function handler(params: PlanParams?): ToolResult
     local user_id = ctx.get("user_id")
     if not user_id then
         return { success = false, error = "user context not available" }
@@ -22,13 +37,15 @@ local function handler(params)
         return { success = false, error = "end_date must be >= start_date" }
     end
 
-    local result, err = trip_service.create_trip(user_id, {
+    local result, err = trip_service.create_trip(tostring(user_id), {
         destination = params.destination,
         origin      = params.origin,
         start_date  = params.start_date,
         end_date    = params.end_date,
     })
-    if err then return { success = false, error = err } end
+    if err or not result then
+        return { success = false, error = err or "create_trip failed" }
+    end
 
     return {
         success = true,

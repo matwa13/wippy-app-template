@@ -2,11 +2,16 @@ local test = require("test")
 local sql = require("sql")
 local trip_repo = require("trip_repo")
 
-local TEST_USER = "trip_test_user_" .. tostring(os.time())
-local state = {}
+local TEST_USER: string = "trip_test_user_" .. tostring(os.time())
 
-local function insert_task(user_id, id, trip_id)
-    local db = sql.get("app:db")
+type TestState = {
+    trip_id: string,
+}
+
+local state: TestState = { trip_id = "" }
+
+local function insert_task(user_id: string, id: string, trip_id: string?)
+    local db = assert(sql.get("app:db"))
     db:execute([[
         INSERT INTO tasks (id, user_id, title, done, priority, trip_id, created_at, updated_at)
         VALUES (?, ?, ?, 0, 2, ?, ?, ?)
@@ -14,8 +19,8 @@ local function insert_task(user_id, id, trip_id)
     db:release()
 end
 
-local function count_tasks_for_trip(user_id, trip_id)
-    local db = sql.get("app:db")
+local function count_tasks_for_trip(user_id: string, trip_id: string): number
+    local db = assert(sql.get("app:db"))
     local rows = db:query(
         "SELECT COUNT(*) AS c FROM tasks WHERE user_id = ? AND trip_id = ?",
         { user_id, trip_id })
@@ -23,8 +28,8 @@ local function count_tasks_for_trip(user_id, trip_id)
     return tonumber(rows[1].c) or 0
 end
 
-local function task_exists(user_id, id)
-    local db = sql.get("app:db")
+local function task_exists(user_id: string, id: string): boolean
+    local db = assert(sql.get("app:db"))
     local rows = db:query(
         "SELECT 1 FROM tasks WHERE user_id = ? AND id = ?", { user_id, id })
     db:release()
@@ -92,8 +97,10 @@ local function define_tests()
         end)
 
         test.it("refuses to delete a trip while status is planning", function()
-            local t = trip_repo.create(TEST_USER, {
+            local t, c_err = trip_repo.create(TEST_USER, {
                 destination = "Oslo", start_date = "2026-06-01", end_date = "2026-06-05" })
+            test.is_nil(c_err); test.not_nil(t)
+            if not t then return end
             local res, err = trip_repo.delete(TEST_USER, t.id)
             test.is_nil(res); test.eq(err, "trip_in_progress")
             -- trip still exists
@@ -106,10 +113,12 @@ local function define_tests()
 
         test.it("deletes trip and cascades its tasks, sparing others", function()
             -- trip A with two tasks; trip B with one task; standalone task with no trip
-            local a = trip_repo.create(TEST_USER, {
+            local a, a_err = trip_repo.create(TEST_USER, {
                 destination = "Rome", start_date = "2026-07-01", end_date = "2026-07-05" })
-            local b = trip_repo.create(TEST_USER, {
+            local b, b_err = trip_repo.create(TEST_USER, {
                 destination = "Paris", start_date = "2026-08-01", end_date = "2026-08-05" })
+            test.is_nil(a_err); test.is_nil(b_err)
+            if not a or not b then return end
             trip_repo.set_status(a.id, "ready")
             trip_repo.set_status(b.id, "ready")
 
@@ -147,8 +156,10 @@ local function define_tests()
         end)
 
         test.it("delete is user-scoped", function()
-            local a = trip_repo.create(TEST_USER, {
+            local a, c_err = trip_repo.create(TEST_USER, {
                 destination = "Lisbon", start_date = "2026-09-01", end_date = "2026-09-05" })
+            test.is_nil(c_err); test.not_nil(a)
+            if not a then return end
             trip_repo.set_status(a.id, "ready")
             local res, err = trip_repo.delete("other_user_totally_not_me", a.id)
             test.is_nil(res); test.eq(err, "not_found")

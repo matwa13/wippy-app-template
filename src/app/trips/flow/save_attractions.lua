@@ -1,12 +1,17 @@
 local trip_repo = require("trip_repo")
 local trips_common = require("trips_common")
 
-local function handler(input)
+type GateInput = {
+    default: any?,
+    context: any?,
+}
+
+local function handler(input: GateInput): (any, string?)
     local ctx = trips_common.as_table(input.context)
     local agent_out = trips_common.as_table(input.default)
-    local trip_id = ctx.trip_id
-    local user_id = ctx.user_id
-    local attractions = agent_out.attractions or {}
+    local trip_id: string = tostring(ctx.trip_id)
+    local user_id: string? = ctx.user_id and tostring(ctx.user_id) or nil
+    local attractions: any = agent_out.attractions or {}
 
     if #attractions == 0 then
         trip_repo.update_node_state(trip_id, "attractions_research",

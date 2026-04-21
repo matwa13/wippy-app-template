@@ -3,12 +3,22 @@ local trips_common = require("trips_common")
 local task_repo = require("task_repo")
 local tasks_common = require("tasks_common")
 
-local function handler(input)
+type GateInput = {
+    default: any?,
+    context: any?,
+}
+
+type PersistResult = {
+    trip_id: string,
+    task_count: number,
+}
+
+local function handler(input: GateInput): (PersistResult?, string?)
     local ctx = trips_common.as_table(input.context)
     local payload = trips_common.as_table(input.default)
     local trip_id: string = tostring(ctx.trip_id)
     local user_id: string = tostring(ctx.user_id)
-    local rows = payload.task_rows or {}
+    local rows: any = payload.task_rows or {}
 
     trip_repo.update_node_state(trip_id, "persist_tasks",
         { status = "running", started_at = os.time() })
@@ -36,7 +46,7 @@ local function handler(input)
     -- Determine final status: ready or partial (partial = any non-critical branch failed).
     local trip = trip_repo.get(user_id, trip_id)
     local ws = trip and trip.workflow_state or {}
-    local packing_failed = (ws.nodes and ws.nodes.packing_research
+    local packing_failed: boolean = (ws.nodes and ws.nodes.packing_research
                             and ws.nodes.packing_research.status == "failed") or false
     trip_repo.set_status(trip_id, packing_failed and "partial" or "ready")
 

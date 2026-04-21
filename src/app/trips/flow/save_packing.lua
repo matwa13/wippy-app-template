@@ -1,12 +1,17 @@
 local trip_repo = require("trip_repo")
 local trips_common = require("trips_common")
 
-local function handler(input)
+type GateInput = {
+    default: any?,
+    context: any?,
+}
+
+local function handler(input: GateInput): any
     local ctx = trips_common.as_table(input.context)
     local agent_out = trips_common.as_table(input.default)
-    local trip_id = ctx.trip_id
-    local user_id = ctx.user_id
-    local packing = agent_out.packing or {}
+    local trip_id: string = tostring(ctx.trip_id)
+    local user_id: string? = ctx.user_id and tostring(ctx.user_id) or nil
+    local packing: any = agent_out.packing or {}
 
     if #packing == 0 then
         trip_repo.append_warning(trip_id, "Packing list unavailable — continuing without it.")
